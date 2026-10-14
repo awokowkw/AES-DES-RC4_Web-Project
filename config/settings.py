@@ -166,3 +166,7 @@ CACHES = {
         'LOCATION': 'vault-keys',
     }
 }
+
+# --- Penyimpanan file terenkripsi ---
+MEDIA_ROOT = BASE_DIR / 'media'
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024   # >2 MB ditulis ke file sementara, bukan RAM
