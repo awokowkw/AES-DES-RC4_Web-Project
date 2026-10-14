@@ -13,6 +13,7 @@ from Crypto.Cipher import AES, ARC4, DES
 from Crypto.Hash import HMAC, SHA256
 from Crypto.Protocol.KDF import HKDF, scrypt
 from Crypto.Random import get_random_bytes
+import time 
 
 ALGOS = ("aes", "rc4", "des")
 VERSION = b"\x01"
@@ -23,6 +24,16 @@ RC4_DROP = 3072
 NONCE_LEN = {"aes": 8, "des": 4, "rc4": 0}
 KEY_LEN = {"aes": 32, "des": 8, "rc4": 32}
 
+CIPHER_LABEL = {
+    "aes": "AES-256-CTR + HMAC-SHA256",
+    "rc4": "RC4-256 (drop 3072) + HMAC-SHA256",
+    "des": "DES-CTR (56-bit) + HMAC-SHA256",
+}
+
+
+def cipher_size(algo: str, plain_bytes: int, items: int = 1) -> int:
+    """Ukuran ciphertext: plaintext + header + HMAC per item (CTR/RC4 tanpa padding)."""
+    return plain_bytes + items * (1 + SALT_LEN + NONCE_LEN[algo] + TAG_LEN)
 
 class IntegrityError(Exception):
     """Password salah, data rusak, atau data dimodifikasi."""
@@ -92,9 +103,15 @@ def _seal_one(algo: str, data_key: bytes, plaintext: bytes) -> bytes:
     return body + _mac(algo, data_key, salt, body).digest()
 
 
-def seal(data_key: bytes, plaintext: bytes) -> dict:
-    """Enkripsi data dengan ketiga algoritma. Return {'aes': blob, 'rc4': blob, 'des': blob}."""
-    return {a: _seal_one(a, data_key, plaintext) for a in ALGOS}
+def seal(data_key: bytes, plaintext: bytes, timings: dict = None) -> dict:
+    """Enkripsi dengan ketiga algoritma. timings (opsional) diisi detik per algoritma."""
+    out = {}
+    for a in ALGOS:
+        t0 = time.perf_counter()
+        out[a] = _seal_one(a, data_key, plaintext)
+        if timings is not None:
+            timings[a] = timings.get(a, 0.0) + time.perf_counter() - t0
+    return out
 
 
 def open_one(data_key: bytes, algo: str, blob: bytes) -> bytes:
@@ -120,10 +137,11 @@ def open_all(data_key: bytes, blobs: dict) -> bytes:
 
 
 # ------------------------------------------------------------ file (streaming)
-def encrypt_stream(data_key: bytes, chunks, outs: dict) -> int:
+def encrypt_stream(data_key: bytes, chunks, outs: dict, timings=None) -> int:
     """
     chunks: iterable potongan bytes (mis. uploaded_file.chunks(CHUNK))
     outs:   {'aes': file_obj, 'rc4': file_obj, 'des': file_obj} (mode 'wb')
+    timings: dict opsional, diisi detik per algoritma.
     File sumber dibaca sekali dan ditulis ke tiga output. Return ukuran plaintext.
     """
     state = {}
@@ -137,14 +155,16 @@ def encrypt_stream(data_key: bytes, chunks, outs: dict) -> int:
     for chunk in chunks:
         size += len(chunk)
         for a in ALGOS:
+            t0 = time.perf_counter()
             cipher, mac = state[a]
             ct = cipher.encrypt(chunk)
             mac.update(ct)
             outs[a].write(ct)
+            if timings is not None:
+                timings[a] = timings.get(a, 0.0) + time.perf_counter() - t0
     for a in ALGOS:
         outs[a].write(state[a][1].digest())
     return size
-
 
 def _read_header(f, algo: str):
     hl = _hdr_len(algo)

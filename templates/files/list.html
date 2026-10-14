@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Drive</h2>
+<nav>
+  <a href="{% url 'drive' %}">Drive</a>
+  {% for f in breadcrumbs %} / <a href="{% url 'folder_detail' f.pk %}">{{ f.name }}</a>{% endfor %}
+</nav>
+
+<h3>Folder</h3>
+<ul>
+  {% for f in subfolders %}
+    <li>
+      <a href="{% url 'folder_detail' f.pk %}">{{ f.name }}</a>
+      <form method="post" action="{% url 'folder_delete' f.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Hapus</button>
+      </form>
+    </li>
+  {% empty %}<li>Tidak ada folder.</li>{% endfor %}
+</ul>
+<form method="post" action="{% url 'folder_create' %}">
+  {% csrf_token %}
+  <input type="hidden" name="parent" value="{{ folder.pk|default:'' }}">
+  <input name="name" placeholder="Nama folder baru" maxlength="100" required>
+  <button type="submit">Buat folder</button>
+</form>
+
+<h3>File</h3>
+<ul>
+  {% for f in files %}
+    <li>
+      {{ f.display_name }} ({{ f.kind }}, {{ f.size|filesizeformat }}) -
+      unduh:
+            <a href="{% url 'file_download' f.pk %}">Unduh (AES + RC4 + DES, ZIP)</a>
+      <form method="post" action="{% url 'file_delete' f.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Hapus</button>
+      </form>
+    </li>
+  {% empty %}<li>Belum ada file.</li>{% endfor %}
+</ul>
+<form method="post" action="{% url 'file_upload' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="hidden" name="folder" value="{{ folder.pk|default:'' }}">
+  <input type="file" name="file" multiple required>
+  <button type="submit">Unggah</button>
+</form>
+{% endblock %}

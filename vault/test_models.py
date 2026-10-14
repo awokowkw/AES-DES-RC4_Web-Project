@@ -13,15 +13,20 @@ class PrivateDataTests(TestCase):
         self.user = User.objects.create_user('budi', 'budi@example.com', 'Rahasia-Banget-123')
 
     def test_save_and_load(self):
-        services.save_private_field(self.user, KEY, 'nik', '3578123456789000')
-        self.assertEqual(services.load_private_data(self.user, KEY), {'nik': '3578123456789000'})
+        services.save_private_field(self.user, KEY, 'phone', '081234567890')
+        self.assertEqual(services.load_private_data(self.user, KEY), {'phone': '081234567890'})
 
     def test_three_blobs_stored_and_differ(self):
-        services.save_private_field(self.user, KEY, 'nik', '3578123456789000')
+        services.save_private_field(self.user, KEY, 'phone', '081234567890')
         row = PrivateData.objects.get()
         self.assertEqual(len({bytes(row.aes), bytes(row.rc4), bytes(row.des)}), 3)
         for blob in (row.aes, row.rc4, row.des):
-            self.assertNotIn(b'3578123456789000', bytes(blob))
+            self.assertNotIn(b'081234567890', bytes(blob))
+
+    def test_wrong_key_fails(self):
+        services.save_private_field(self.user, KEY, 'phone', '123')
+        with self.assertRaises(crypto.IntegrityError):
+            services.load_private_data(self.user, b'x' * 32)   
 
     def test_update_overwrites(self):
         services.save_private_field(self.user, KEY, 'phone', '0811')
@@ -33,10 +38,6 @@ class PrivateDataTests(TestCase):
         with self.assertRaises(ValueError):
             services.save_private_field(self.user, KEY, 'hobi', 'x')
 
-    def test_wrong_key_fails(self):
-        services.save_private_field(self.user, KEY, 'nik', '123')
-        with self.assertRaises(crypto.IntegrityError):
-            services.load_private_data(self.user, b'x' * 32)
 
     def test_detail_shows_three_equal_plaintexts(self):
         services.save_private_field(self.user, KEY, 'address', 'Jl. Mawar 5')
@@ -45,7 +46,7 @@ class PrivateDataTests(TestCase):
 
     def test_users_are_isolated(self):
         other = User.objects.create_user('ani', 'ani@example.com', 'Rahasia-Banget-123')
-        services.save_private_field(self.user, KEY, 'nik', '111')
+        services.save_private_field(self.user, KEY, 'phone', '111')
         self.assertEqual(services.load_private_data(other, KEY), {})
 
 
