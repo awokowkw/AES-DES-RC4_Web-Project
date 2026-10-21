@@ -16,7 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from vault import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.login_page, name='login'),
+    path('register/', views.register_page, name='register'),
+    path('home/', views.home_page, name='home'),
+    path('files/', views.file_list_page, name='files'),
+    path('profile/', views.profile_page, name='profile'),
+    path('recent/', views.recent_page, name='recent'),
+    path('security/', views.security_page, name='security'),
+    path('settings/', views.settings_page, name='settings'),
 ]
