@@ -11,6 +11,7 @@ class AuthTests(TestCase):
         self.client.post(reverse('register'), {
             'username': 'budi',
             'email': 'budi@example.com',
+            'full_name': 'Budi Santoso',
             'password1': PASSWORD,
             'password2': PASSWORD,
         })
@@ -22,16 +23,27 @@ class AuthTests(TestCase):
     def test_register_requires_email(self):
         self.client.post(reverse('register'), {
             'username': 'tanpa_email',
+            'full_name': 'Tanpa Email',
             'password1': PASSWORD,
             'password2': PASSWORD,
         })
         self.assertFalse(User.objects.filter(username='tanpa_email').exists())
+
+    def test_register_requires_full_name(self):
+        self.client.post(reverse('register'), {
+            'username': 'tanpa_nama',
+            'email': 'tanpa_nama@example.com',
+            'password1': PASSWORD,
+            'password2': PASSWORD,
+        })
+        self.assertFalse(User.objects.filter(username='tanpa_nama').exists())
 
     def test_register_rejects_duplicate_email(self):
         User.objects.create_user('ani', 'ani@example.com', PASSWORD)
         self.client.post(reverse('register'), {
             'username': 'ani2',
             'email': 'ANI@example.com',
+            'full_name': 'Ani Dua',
             'password1': PASSWORD,
             'password2': PASSWORD,
         })

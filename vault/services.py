@@ -1,21 +1,22 @@
-import os
-import uuid
-
+import datetime
 import hashlib
+import os
 import tempfile
 import time
+import uuid
 import zipfile
-
-from .models import CryptoLog, Folder, PrivateData, StoredFile
-
 from contextlib import ExitStack
+from types import SimpleNamespace
 
 from django.core.files.storage import default_storage
 from django.db import transaction
+from django.db.models import Sum
+from django.urls import reverse
+from django.utils import timezone
 
 from . import crypto
 from .fields import DEFAULT_FOLDERS, FIELDS, KINDS
-from .models import Folder, PrivateData, StoredFile
+from .models import CryptoLog, Folder, PrivateData, StoredFile
 
 def log_crypto(user, op, timings, plain_bytes, file_id=None, items=1):
     """Satu baris log per aktivitas: waktu dan ukuran ciphertext tiap algoritma."""
@@ -250,3 +251,108 @@ def decrypt_all_to_zip(stored, data_key):
         raise
     tmp.seek(0)
     return tmp, name, timings
+
+# ------------------------------------------------- bentuk data untuk template FE
+STORAGE_QUOTA = 1 << 30   # kuota tampilan: 1 GB
+
+FILE_KINDS = {  # ekstensi: (kelas ikon FE, label)
+    '.pdf': ('pdf', 'PDF document'),
+    '.doc': ('document', 'Document'), '.docx': ('document', 'Document'),
+    '.xls': ('spreadsheet', 'Spreadsheet'), '.xlsx': ('spreadsheet', 'Spreadsheet'),
+    '.jpg': ('image', 'Image'), '.jpeg': ('image', 'Image'), '.png': ('image', 'Image'),
+    '.gif': ('image', 'Image'), '.webp': ('image', 'Image'),
+    '.mp4': ('video', 'Video'), '.mov': ('video', 'Video'),
+    '.webm': ('video', 'Video'), '.mkv': ('video', 'Video'),
+}
+FOLDER_KIND = {'Dokumen': 'folder-documents', 'Gambar': 'folder-photos',
+               'Video': 'folder-videos'}
+
+
+def human_size(n):
+    n = float(n)
+    for unit in ('B', 'KB', 'MB'):
+        if n < 1024:
+            return f'{n:.0f} {unit}' if unit == 'B' else f'{n:.1f} {unit}'
+        n /= 1024
+    return f'{n:.1f} GB'
+
+
+def friendly_time(dt):
+    dt = timezone.localtime(dt)
+    today = timezone.localdate()
+    clock = dt.strftime('%I:%M %p').lstrip('0')
+    if dt.date() == today:
+        return f'Today, {clock}'
+    if dt.date() == today - datetime.timedelta(days=1):
+        return f'Yesterday, {clock}'
+    return dt.strftime('%b %d, %Y')
+
+
+def storage_info(user):
+    used = StoredFile.objects.filter(owner=user).aggregate(s=Sum('size'))['s'] or 0
+    return {'used': human_size(used), 'total': human_size(STORAGE_QUOTA),
+            'percentage': min(100, round(used * 100 / STORAGE_QUOTA))}
+
+
+def profile_dict(user, data_key):
+    """Bentuk yang diminta FE (PROFILE_DATA). Tanpa kunci: hanya data akun."""
+    data = {}
+    if data_key is not None:
+        try:
+            data = load_private_data(user, data_key)
+        except crypto.IntegrityError:
+            data = {}
+    full = data.get('full_name') or user.get_full_name().strip() or user.username
+    parts = full.split()
+    dob = data.get('date_of_birth', '')
+    try:
+        dob = datetime.date.fromisoformat(dob).strftime('%b %d, %Y') if dob else ''
+    except ValueError:
+        pass
+    return {
+        'full_name': full,
+        'first_name': parts[0] if parts else user.username,
+        'username': user.username,
+        'email': user.email,
+        'date_of_birth': dob,
+        'phone_number': data.get('phone', ''),
+        'address': data.get('address', ''),
+        'initials': ''.join(p[0] for p in parts[:2]).upper() or user.username[:1].upper(),
+    }
+
+
+def present_file(sf, data_key):
+    name = display_name(sf, data_key)
+    ext = os.path.splitext(name)[1].lower()
+    kind, label = FILE_KINDS.get(ext, ('file', 'File'))
+    created = timezone.localtime(sf.created)
+    return SimpleNamespace(
+        pk=sf.pk, name=name, display_name=name, kind=kind, type=label,
+        extension=ext.lstrip('.').upper(),
+        size=human_size(sf.size), size_bytes=sf.size, size_sort=sf.size / 1048576,
+        created=created.strftime('%b %d, %Y'), modified=friendly_time(sf.created),
+        modified_sort=int(created.strftime('%Y%m%d%H%M')),
+        location=sf.folder.name if sf.folder_id else '',
+        download_url=reverse('file_download', args=[sf.pk]),
+        delete_url=reverse('file_delete', args=[sf.pk]))
+
+
+def present_folder(f):
+    """f harus di-annotate nf (jumlah file) dan nc (jumlah subfolder)."""
+    return SimpleNamespace(
+        pk=f.pk, name=f.name, item_count=f.nf + f.nc,
+        kind=FOLDER_KIND.get(f.name, 'folder-personal'),
+        url=reverse('folder_detail', args=[f.pk]),
+        delete_url=reverse('folder_delete', args=[f.pk]))
+
+
+ACTIVITY = {'upload': ('Uploaded', 'upload'), 'download': ('Downloaded', 'open')}
+
+
+def recent_events(user, data_key, limit=30):
+    """Aktivitas upload/download terbaru milik user (dari log); file yang sudah dihapus dilewati."""
+    logs = list(CryptoLog.objects.filter(
+        user=user, op__in=ACTIVITY, file_id__isnull=False)[:limit])
+    files = {f.pk: f for f in StoredFile.objects.filter(
+        owner=user, pk__in=[l.file_id for l in logs]).select_related('folder')}
+    return [(l, present_file(files[l.file_id], data_key)) for l in logs if l.file_id in files]

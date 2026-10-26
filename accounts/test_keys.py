@@ -16,10 +16,13 @@ class KeyHookTests(TestCase):
 
     def _register(self, name='budi'):
         return self.client.post(reverse('register'), {
-            'username': name, 'email': f'{name}@example.com',
-            'password1': PW, 'password2': PW,
+            'username': name,
+            'email': f'{name}@example.com',
+            'full_name': name.title(),
+            'password1': PW,
+            'password2': PW,
         })
-
+    
     def test_register_creates_key_and_caches_it(self):
         self._register()
         user = User.objects.get(username='budi')

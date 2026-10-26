@@ -6,14 +6,14 @@ from django.http import FileResponse, Http404, HttpResponse, StreamingHttpRespon
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_POST
+from django.db.models import Count
 
 from accounts.decorators import vault_unlocked
 
 from . import crypto, services
 from .fields import DEFAULT_FOLDERS
 from .forms import IdCardForm, ProfileForm
-from .models import Folder, StoredFile
-
+from .models import CryptoLog, Folder, StoredFile
 
 def _folder_or_none(request, raw):
     """Folder milik user, atau None (akar). Folder orang lain = 404."""
@@ -73,21 +73,22 @@ def id_card_upload(request):
     return redirect('profile')
 
 
-# ----------------------------------------------------------------- drive
 @vault_unlocked
 def folder_detail(request, pk=None):
     key = request.data_key
     folder = get_object_or_404(Folder, pk=pk, owner=request.user) if pk else None
-    subfolders = Folder.objects.filter(owner=request.user, parent=folder)
-    files = list(StoredFile.objects.filter(owner=request.user, folder=folder)
-                 .exclude(kind='id_card'))
-    for f in files:
-        f.display_name = services.display_name(f, key)
+    subfolders = (Folder.objects.filter(owner=request.user, parent=folder)
+                  .annotate(nf=Count('files', distinct=True), nc=Count('children', distinct=True)))
+    qs = StoredFile.objects.filter(owner=request.user).exclude(kind='id_card').select_related('folder')
+    if folder is not None:       # di akar: tampilkan semua file (seperti desain FE)
+        qs = qs.filter(folder=folder)
     return render(request, 'files/list.html', {
         'folder': folder,
         'subfolders': subfolders,
-        'files': files,
+        'folders': [services.present_folder(f) for f in subfolders],
+        'files': [services.present_file(f, key) for f in qs],
         'breadcrumbs': folder.breadcrumbs() if folder else [],
+        'active_nav': 'files', 'active_page': 'home',
     })
 
 
@@ -182,4 +183,67 @@ def file_delete(request, pk):
     messages.success(request, 'File dihapus.')
     return _back(folder)
 
+# ------------------------------------------------------- halaman FE lainnya
+@vault_unlocked
+def home(request):
+    key = request.data_key
+    qs = (StoredFile.objects.filter(owner=request.user).exclude(kind='id_card')
+          .select_related('folder'))
+    activity = [
+        {'action': services.ACTIVITY[l.op][0], 'file': f.name,
+         'time': services.friendly_time(l.created), 'kind': services.ACTIVITY[l.op][1]}
+        for l, f in services.recent_events(request.user, key, 8)]
+    return render(request, 'dashboard.html', {
+        'totals': {'files': qs.count(),
+                   'folders': Folder.objects.filter(owner=request.user).count()},
+        'recent_files': [services.present_file(f, key) for f in qs[:4]],
+        'recent_activity': activity,
+        'active_page': 'home',
+    })
 
+
+@vault_unlocked
+def recent(request):
+    key = request.data_key
+    events = services.recent_events(request.user, key)
+    opened = [{'file': f, 'time': services.friendly_time(l.created)}
+              for l, f in events if l.op == 'download'][:10]
+    uploaded = [{'file': services.present_file(sf, key),
+                 'time': services.friendly_time(sf.created)}
+                for sf in StoredFile.objects.filter(owner=request.user)
+                .exclude(kind='id_card').select_related('folder')[:10]]
+    modified = []   # backend belum mencatat perubahan file
+    return render(request, 'recent.html', {
+        'opened': opened, 'uploaded': uploaded, 'modified': modified,
+        'recent_sections': [
+            ('Recently opened', 'RECENTLY OPENED', 'opened', opened),
+            ('Recently uploaded', 'RECENTLY UPLOADED', 'uploaded', uploaded),
+            ('Recently modified', 'RECENTLY MODIFIED', 'modified', modified)],
+        'active_nav': 'recent', 'active_page': 'recent',
+    })
+
+
+@vault_unlocked
+def security(request):
+    """Perbandingan AES/RC4/DES dari log. Data hanya untuk admin (staff)."""
+    rows = []
+    if request.user.is_staff:
+        uploads = CryptoLog.objects.filter(op='upload', file_id__isnull=False).select_related('user')[:50]
+        for up in uploads:
+            dl = CryptoLog.objects.filter(op='download', file_id=up.file_id).first()
+            for a in crypto.ALGOS:
+                rows.append({
+                    'file': f'File #{up.file_id} ({up.user.username})',
+                    'algorithm': a.upper(),
+                    'encryption_time': f'{getattr(up, a + "_seconds") * 1000:.2f} ms',
+                    'decryption_time': f'{getattr(dl, a + "_seconds") * 1000:.2f} ms' if dl else '-',
+                    'original_size': services.human_size(up.plain_bytes),
+                    'encrypted_size': services.human_size(getattr(up, a + '_bytes')),
+                })
+    return render(request, 'security.html', {
+        'comparison_results': rows, 'active_nav': 'security', 'active_page': 'security'})
+
+
+@vault_unlocked
+def settings_page(request):
+    return render(request, 'settings.html', {'active_page': 'settings'})

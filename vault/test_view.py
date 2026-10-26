@@ -19,9 +19,12 @@ PHONE = '081234567890'
 
 def _register(client, name):
     client.post(reverse('register'), {
-        'username': name, 'email': f'{name}@example.com',
-        'password1': PW, 'password2': PW})
-
+        'username': name,
+        'email': f'{name}@example.com',
+        'full_name': name.title(),
+        'password1': PW,
+        'password2': PW,
+    })
 
 @override_settings(MEDIA_ROOT=TMP)
 class ViewTests(TestCase):
@@ -81,17 +84,20 @@ class ViewTests(TestCase):
         self.assertEqual(r.status_code, 200)
         r = self.a.post(reverse('profile'), {'date_of_birth': '2999-01-01'})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(PrivateData.objects.count(), 0)
+        self.assertFalse(PrivateData.objects.filter(
+            user=self.ua, field__in=['phone', 'date_of_birth']).exists())
 
     def test_clearing_field_deletes_row(self):
         self.a.post(reverse('profile'), {'phone': PHONE})
-        self.assertEqual(PrivateData.objects.filter(user=self.ua).count(), 1)
+        self.assertTrue(PrivateData.objects.filter(user=self.ua, field='phone').exists())
         self.a.post(reverse('profile'), {'phone': ''})
-        self.assertEqual(PrivateData.objects.filter(user=self.ua).count(), 0)
+        self.assertFalse(PrivateData.objects.filter(user=self.ua, field='phone').exists())
 
     def test_profile_save_is_logged(self):
+        before = CryptoLog.objects.filter(user=self.ua, op='profile_save').count()
         self.a.post(reverse('profile'), {'phone': PHONE})
-        self.assertEqual(CryptoLog.objects.filter(user=self.ua, op='profile_save').count(), 1)
+        after = CryptoLog.objects.filter(user=self.ua, op='profile_save').count()
+        self.assertEqual(after, before + 1)
 
     # --------------------------------------------------------- id card
     def test_id_card_upload_and_replace(self):
