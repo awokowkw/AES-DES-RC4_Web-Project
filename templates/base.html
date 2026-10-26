@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Secure Vault</title>
+</head>
+<body>
+  {% if user.is_authenticated %}
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit">Logout ({{ user.username }})</button>
+    </form>
+  {% endif %}
+
+    {% if user.is_authenticated %}
+    <nav><a href="{% url 'drive' %}">Drive</a> | <a href="{% url 'profile' %}">Profil
+      <a href="{% url 'crypto_log' %}">Log</a>
+    </a></nav>
+  {% endif %}
+  {% if messages %}
+    <ul>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  
+</body>
+</html>

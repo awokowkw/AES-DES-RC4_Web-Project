@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Log Kripto</h2>
+<table border="1" cellpadding="4">
+  <tr>
+    <th>Waktu</th><th>Operasi</th><th>Jenis ciphertext</th>
+    <th>Ukuran plaintext</th><th>Ukuran ciphertext</th><th>Waktu proses (ms)</th>
+  </tr>
+  {% for l in logs %}
+  <tr>
+    <td>{{ l.created|date:"d M Y H:i:s" }}</td>
+    <td>{{ l.op }}</td>
+    <td>{{ l.cipher }}</td>
+    <td>{{ l.plain_bytes|filesizeformat }}</td>
+    <td>{{ l.cipher_bytes|filesizeformat }}</td>
+    <td>{{ l.ms|floatformat:2 }}</td>
+  </tr>
+  {% empty %}<tr><td colspan="6">Belum ada aktivitas.</td></tr>{% endfor %}
+</table>
+<p><small>Waktu upload mencakup enkripsi dan penulisan ke disk. Waktu download mencakup pembacaan, verifikasi MAC, dan dekripsi.</small></p>
+{% endblock %}

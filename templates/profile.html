@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Profil</h2>
+<p>Username: <strong>{{ user.username }}</strong></p>
+<p>Email: <strong>{{ user.email }}</strong></p>
+
+<h3>Identitas (disimpan terenkripsi AES, RC4, DES)</h3>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Simpan</button>
+</form>
+
+<h3>ID Card</h3>
+{% if id_card %}
+  <img src="{% url 'file_download' id_card.pk %}?inline=1" alt="ID card" style="max-width:320px"><br>
+  <small>{{ id_card.display_name }}</small>
+{% else %}
+  <p>Belum ada ID card.</p>
+{% endif %}
+<form method="post" action="{% url 'id_card_upload' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ id_card_form.as_p }}
+  <button type="submit">Unggah</button>
+</form>
+{% endblock %}
