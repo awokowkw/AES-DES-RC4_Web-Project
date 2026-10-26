@@ -12,7 +12,7 @@ from accounts.decorators import vault_unlocked
 from . import crypto, services
 from .fields import DEFAULT_FOLDERS
 from .forms import IdCardForm, ProfileForm
-from .models import CryptoLog, Folder, StoredFile
+from .models import Folder, StoredFile
 
 
 def _folder_or_none(request, raw):
@@ -183,8 +183,3 @@ def file_delete(request, pk):
     return _back(folder)
 
 
-# ------------------------------------------------------------------- log
-@vault_unlocked
-def crypto_log(request):
-    logs = CryptoLog.objects.filter(user=request.user)[:200]
-    return render(request, 'logs.html', {'logs': logs})

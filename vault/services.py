@@ -18,14 +18,11 @@ from .fields import DEFAULT_FOLDERS, FIELDS, KINDS
 from .models import Folder, PrivateData, StoredFile
 
 def log_crypto(user, op, timings, plain_bytes, file_id=None, items=1):
-    """Satu baris log per algoritma: waktu, ukuran, dan jenis cipher."""
-    CryptoLog.objects.bulk_create([
-        CryptoLog(user=user, op=op, cipher=crypto.CIPHER_LABEL[a],
-                  plain_bytes=plain_bytes,
-                  cipher_bytes=crypto.cipher_size(a, plain_bytes, items),
-                  seconds=timings.get(a, 0.0), file_id=file_id)
-        for a in crypto.ALGOS])
-
+    """Satu baris log per aktivitas: waktu dan ukuran ciphertext tiap algoritma."""
+    CryptoLog.objects.create(
+        user=user, op=op, plain_bytes=plain_bytes, items=items, file_id=file_id,
+        **{f'{a}_seconds': timings.get(a, 0.0) for a in crypto.ALGOS},
+        **{f'{a}_bytes': crypto.cipher_size(a, plain_bytes, items) for a in crypto.ALGOS})
 
 # ---------------------------------------------------------------- data pribadi
 def save_private_field(user, data_key, field, value, timings=None):

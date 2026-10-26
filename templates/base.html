@@ -15,7 +15,6 @@
 
     {% if user.is_authenticated %}
     <nav><a href="{% url 'drive' %}">Drive</a> | <a href="{% url 'profile' %}">Profil
-      <a href="{% url 'crypto_log' %}">Log</a>
     </a></nav>
   {% endif %}
   {% if messages %}

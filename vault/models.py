@@ -70,15 +70,19 @@ class StoredFile(models.Model):
         return {'aes': self.path_aes, 'rc4': self.path_rc4, 'des': self.path_des}
 
 class CryptoLog(models.Model):
-    """Catatan angka saja: tidak menyimpan isi data maupun nama file."""
+    """Satu aktivitas = satu baris. Hanya angka, tanpa isi data atau nama file."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                              related_name='crypto_logs')
-    op = models.CharField(max_length=20)       # upload, download, profile_save, profile_load
-    cipher = models.CharField(max_length=60)   # jenis ciphertext yang dipakai
-    plain_bytes = models.BigIntegerField()
-    cipher_bytes = models.BigIntegerField()
-    seconds = models.FloatField()
+    op = models.CharField(max_length=20)   # upload, download, profile_save, profile_load
     file_id = models.PositiveIntegerField(null=True, blank=True)
+    items = models.PositiveIntegerField(default=1)
+    plain_bytes = models.BigIntegerField()
+    aes_seconds = models.FloatField(default=0)
+    rc4_seconds = models.FloatField(default=0)
+    des_seconds = models.FloatField(default=0)
+    aes_bytes = models.BigIntegerField(default=0)
+    rc4_bytes = models.BigIntegerField(default=0)
+    des_bytes = models.BigIntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

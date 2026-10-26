@@ -12,5 +12,4 @@ urlpatterns = [
     path('drive/upload/', views.file_upload, name='file_upload'),
     path('drive/file/<int:pk>/download/', views.file_download, name='file_download'),
     path('drive/file/<int:pk>/delete/', views.file_delete, name='file_delete'),
-    path('logs/', views.crypto_log, name='crypto_log'),
 ]

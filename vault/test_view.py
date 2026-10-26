@@ -44,7 +44,7 @@ class ViewTests(TestCase):
     # ---------------------------------------------------------- akses
     def test_anonymous_redirected_to_login(self):
         anon = Client()
-        for name in ('profile', 'drive', 'crypto_log'):
+        for name in ('profile', 'drive'):
             r = anon.get(reverse(name))
             self.assertEqual(r.status_code, 302)
             self.assertIn('/login/', r['Location'])
