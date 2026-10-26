@@ -1,26 +1,122 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile · SYNK{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block body_class %}profile-page{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block sidebar_toggle %}{% endblock %}
+
 {% block content %}
-<h2>Profil</h2>
-<p>Username: <strong>{{ user.username }}</strong></p>
-<p>Email: <strong>{{ user.email }}</strong></p>
+<!-- Tahap 6: data profil dan dokumen identitas, memakai preview lokal di browser. -->
+<div class="profile-page-content">
+    <section class="profile-intro-card" aria-labelledby="profile-title">
+        <div class="profile-photo-wrap">
+            <div class="profile-photo-preview" id="profile-photo-preview" aria-label="Profile photo preview">
+                <span id="profile-initials">{{ profile.initials }}</span>
+                <img id="profile-photo-image" alt="Profile photo" hidden>
+            </div>
+            <span class="profile-photo-status" aria-hidden="true"></span>
+        </div>
+        <div class="profile-intro-copy">
+            <p class="dashboard-kicker">YOUR ACCOUNT</p>
+            <h2 id="profile-title">{{ profile.full_name }}</h2>
+            <p>@{{ profile.username }} <span aria-hidden="true">·</span> Personal account</p>
+        </div>
+        <div class="profile-photo-actions">
+            <input class="visually-hidden" id="profile-photo-input" type="file" accept="image/*">
+            <button class="secondary-button" id="change-photo-button" type="button">Change photo</button>
+            <button class="text-button" id="remove-photo-button" type="button" disabled>Remove</button>
+        </div>
+    </section>
 
-<h3>Identitas (disimpan terenkripsi AES, RC4, DES)</h3>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Simpan</button>
-</form>
+    <section class="dashboard-card profile-information-card" aria-labelledby="personal-info-heading">
+        <div class="profile-section-heading">
+            <div>
+                <p class="card-eyebrow">ACCOUNT DETAILS</p>
+                <h3 id="personal-info-heading">Personal information</h3>
+            </div>
+            <span class="profile-section-caption">Only visible to you</span>
+        </div>
 
-<h3>ID Card</h3>
-{% if id_card %}
-  <img src="{% url 'file_download' id_card.pk %}?inline=1" alt="ID card" style="max-width:320px"><br>
-  <small>{{ id_card.display_name }}</small>
-{% else %}
-  <p>Belum ada ID card.</p>
-{% endif %}
-<form method="post" action="{% url 'id_card_upload' %}" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ id_card_form.as_p }}
-  <button type="submit">Unggah</button>
-</form>
+        <dl class="profile-information-grid">
+            <div class="profile-field">
+                <dt>Full name</dt>
+                <dd>{{ profile.full_name }}</dd>
+            </div>
+            <div class="profile-field">
+                <dt>Username</dt>
+                <dd>{{ profile.username }}</dd>
+            </div>
+            <div class="profile-field">
+                <dt>Email address</dt>
+                <dd>{{ profile.email }}</dd>
+            </div>
+            <div class="profile-field">
+                <dt>Date of birth</dt>
+                <dd>{{ profile.date_of_birth }}</dd>
+            </div>
+            <div class="profile-field">
+                <dt>Phone number</dt>
+                <dd>{{ profile.phone_number }}</dd>
+            </div>
+            <div class="profile-field">
+                <dt>Address</dt>
+                <dd>{{ profile.address }}</dd>
+            </div>
+        </dl>
+        <p class="profile-preview-note">Some profile details are sample data for this frontend preview.</p>
+    </section>
+
+    <section class="dashboard-card identity-card-section" aria-labelledby="identity-card-heading">
+        <div class="profile-section-heading">
+            <div>
+                <p class="card-eyebrow">PRIVATE DOCUMENT</p>
+                <h3 id="identity-card-heading">Identity card</h3>
+            </div>
+            <span class="identity-card-status"><span aria-hidden="true"></span> Preview only</span>
+        </div>
+
+        <p class="identity-privacy-notice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.25c0 4.3-2.85 7.5-7 9.25-4.15-1.75-7-4.95-7-9.25V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+            Your identity document is private and only accessible from your account.
+        </p>
+
+        <div class="identity-preview-stage">
+            <div class="identity-card-mock" id="identity-card-mock" aria-label="Sample identity card preview">
+                <div class="mock-card-topline">
+                    <span class="mock-card-emblem" aria-hidden="true">ID</span>
+                    <span>IDENTITY DOCUMENT <small>PREVIEW</small></span>
+                </div>
+                <div class="mock-card-content">
+                    <div class="mock-card-photo" aria-hidden="true">{{ profile.initials }}</div>
+                    <div class="mock-card-copy">
+                        <span class="mock-card-label">NAME</span>
+                        <strong>{{ profile.full_name }}</strong>
+                        <span class="mock-card-muted">Sample preview · not an uploaded document</span>
+                    </div>
+                </div>
+                <span class="mock-card-footer">SYNK PRIVATE FILE</span>
+            </div>
+
+            <img class="identity-image-preview" id="identity-card-image" alt="Preview of selected identity card photo" hidden>
+            <div class="identity-empty-state" id="identity-card-empty" hidden>
+                <span class="empty-state-icon" aria-hidden="true">＋</span>
+                <strong>No document selected</strong>
+                <span>Choose a JPG or PNG photo to preview it here.</span>
+            </div>
+        </div>
+
+        <div class="identity-card-actions">
+            <input class="visually-hidden" id="identity-card-input" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+            <button class="secondary-button" id="replace-identity-card" type="button">Replace document</button>
+            <button class="text-button danger-text-button" id="remove-identity-card" type="button">Remove</button>
+            <span class="identity-local-note" id="identity-preview-status" role="status" aria-live="polite">Sample document preview</span>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/profile-ui.js' %}" defer></script>
 {% endblock %}

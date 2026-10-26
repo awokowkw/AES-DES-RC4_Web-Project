@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Settings · SYNK{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<!-- Tahap 7: pengaturan berupa kontrol dan status UI, tanpa mengubah akun. -->
+<div class="stage-seven-page settings-page">
+    <header class="stage-seven-heading">
+        <div>
+            <p class="dashboard-kicker">PREFERENCES</p>
+            <h2>Settings</h2>
+            <p>Manage the preferences for your SYNK workspace.</p>
+        </div>
+        <span class="preview-data-badge">Preview only</span>
+    </header>
+
+    <section class="dashboard-card settings-section" aria-labelledby="settings-account-heading">
+        <div class="settings-section-heading">
+            <span class="settings-section-icon" aria-hidden="true">◎</span>
+            <div>
+                <p class="card-eyebrow">ACCOUNT</p>
+                <h3 id="settings-account-heading">Account</h3>
+                <p>Review account details and available account actions.</p>
+            </div>
+        </div>
+        <div class="settings-account-row">
+            <div><span>Email address</span><strong>{{ profile.email }}</strong></div>
+            <div><span>Password</span><strong>Last updated recently</strong></div>
+        </div>
+        <div class="settings-actions">
+            <button class="secondary-button" type="button" disabled>Change password</button>
+            <button class="danger-outline-button" type="button" disabled>Delete account</button>
+            <span class="settings-hint">Account actions are unavailable in this frontend preview.</span>
+        </div>
+    </section>
+
+    <section class="dashboard-card settings-section" aria-labelledby="settings-appearance-heading">
+        <div class="settings-section-heading">
+            <span class="settings-section-icon" aria-hidden="true">◐</span>
+            <div>
+                <p class="card-eyebrow">DISPLAY</p>
+                <h3 id="settings-appearance-heading">Appearance</h3>
+                <p>Choose the appearance for this preview.</p>
+            </div>
+        </div>
+        <div class="appearance-options" role="group" aria-label="Appearance preference">
+            <button class="appearance-option is-selected" type="button" data-appearance="light" aria-pressed="true">
+                <span class="appearance-swatch appearance-swatch-light" aria-hidden="true"></span>
+                Light
+            </button>
+            <button class="appearance-option" type="button" data-appearance="dark" aria-pressed="false">
+                <span class="appearance-swatch appearance-swatch-dark" aria-hidden="true"></span>
+                Dark
+            </button>
+        </div>
+        <p class="settings-status" id="appearance-status" role="status" aria-live="polite">Light appearance selected for preview.</p>
+    </section>
+
+    <section class="dashboard-card settings-section" aria-labelledby="settings-notifications-heading">
+        <div class="settings-section-heading">
+            <span class="settings-section-icon" aria-hidden="true">◉</span>
+            <div>
+                <p class="card-eyebrow">UPDATES</p>
+                <h3 id="settings-notifications-heading">Notifications</h3>
+                <p>Choose whether to receive email notifications.</p>
+            </div>
+        </div>
+        <label class="notification-setting" for="email-notifications">
+            <span><strong>Email notifications</strong><small>Receive updates about activity in your cloud.</small></span>
+            <input id="email-notifications" type="checkbox" checked>
+        </label>
+        <p class="settings-status" id="notification-status" role="status" aria-live="polite">Email notifications are on for this preview.</p>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/settings-ui.js' %}" defer></script>
+{% endblock %}
