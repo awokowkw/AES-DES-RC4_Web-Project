@@ -91,7 +91,7 @@ class ViewTests(TestCase):
 
     def test_profile_save_is_logged(self):
         self.a.post(reverse('profile'), {'phone': PHONE})
-        self.assertEqual(CryptoLog.objects.filter(user=self.ua, op='profile_save').count(), 3)
+        self.assertEqual(CryptoLog.objects.filter(user=self.ua, op='profile_save').count(), 1)
 
     # --------------------------------------------------------- id card
     def test_id_card_upload_and_replace(self):
@@ -207,16 +207,20 @@ class ViewTests(TestCase):
         self.a.get(reverse('file_download', args=[sf.pk]))
         for op in ('upload', 'download'):
             rows = CryptoLog.objects.filter(user=self.ua, op=op)
-            self.assertEqual(rows.count(), 3)
-            self.assertEqual(len({r.cipher for r in rows}), 3)
-            for r in rows:
-                self.assertEqual(r.plain_bytes, len(b'isi rahasia budi'))
-                self.assertGreater(r.cipher_bytes, r.plain_bytes)
-                self.assertGreaterEqual(r.seconds, 0)
+            self.assertEqual(rows.count(), 1)   # satu aktivitas = satu baris
+            r = rows[0]
+            self.assertEqual(r.plain_bytes, len(b'isi rahasia budi'))
+            for a in ('aes', 'rc4', 'des'):
+                self.assertGreater(getattr(r, f'{a}_bytes'), r.plain_bytes)
+                self.assertGreaterEqual(getattr(r, f'{a}_seconds'), 0)
 
-    def test_log_page_shows_only_own_rows(self):
+    def test_log_only_visible_to_admin(self):
         self._upload(folder=self.docs)
-        r = self.b.get(reverse('crypto_log'))
-        self.assertEqual(len(r.context['logs']), 0)
-        r = self.a.get(reverse('crypto_log'))
-        self.assertEqual(len(r.context['logs']), 3)
+        self.assertEqual(self.a.get('/logs/').status_code, 404)   # halaman user sudah tidak ada
+        r = self.a.get('/admin/vault/cryptolog/')                 # user biasa ditolak
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/admin/login/', r['Location'])
+        admin_user = User.objects.create_superuser('boss', 'boss@example.com', PW)
+        c = Client()
+        c.force_login(admin_user)
+        self.assertEqual(c.get('/admin/vault/cryptolog/').status_code, 200)
