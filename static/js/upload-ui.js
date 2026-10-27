@@ -16,6 +16,10 @@
     let nextFileId = 0;
     const timers = new Map();
 
+    const pending = new Map();
+    const realForm = document.getElementById("real-upload-form");
+    const realInput = document.getElementById("real-file-input");
+
     function formatFileSize(size) {
         if (size < 1024 * 1024) {
             return Math.max(1, Math.round(size / 1024)) + " KB";
@@ -49,6 +53,7 @@
         row.className = "upload-file-row";
         row.dataset.uploadId = fileId;
         row.dataset.uploadStatus = "queued";
+        pending.set(fileId, file);
 
         const icon = document.createElement("span");
         icon.className = "upload-file-icon";
@@ -93,6 +98,7 @@
             stopProgress(row, "removed");
             row.remove();
             updateQueueSummary();
+            pending.delete(row.dataset.uploadId);
         });
 
         row.append(icon, content, removeButton);
@@ -179,10 +185,18 @@
         if (event.dataTransfer) addFiles(event.dataTransfer.files);
     });
 
-    startButton.addEventListener("click", function () {
-        list.querySelectorAll('.upload-file-row[data-upload-status="queued"], .upload-file-row[data-upload-status="canceled"]').forEach(
-            startProgress
-        );
+        startButton.addEventListener("click", function () {
+        const rows = list.querySelectorAll(".upload-file-row");
+        const dt = new DataTransfer();
+        rows.forEach(function (row) {
+            const file = pending.get(row.dataset.uploadId);
+            if (file) dt.items.add(file);
+        });
+        if (!dt.files.length) return;
+        startButton.disabled = true;
+        startButton.textContent = "Uploading…";
+        realInput.files = dt.files;
+        realForm.submit();
     });
 
     cancelButton.addEventListener("click", function () {

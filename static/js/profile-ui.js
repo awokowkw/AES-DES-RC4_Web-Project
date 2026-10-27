@@ -1,18 +1,13 @@
-// Tahap 6: preview foto profil dan dokumen identitas hanya di browser.
+// Profil: foto profil = preview lokal; ID card = unggah sungguhan ke server.
 (function () {
     const photoInput = document.getElementById("profile-photo-input");
     const identityInput = document.getElementById("identity-card-input");
-
     if (!photoInput || !identityInput) return;
 
     const photoImage = document.getElementById("profile-photo-image");
     const initials = document.getElementById("profile-initials");
     const removePhotoButton = document.getElementById("remove-photo-button");
-    const identityMock = document.getElementById("identity-card-mock");
-    const identityImage = document.getElementById("identity-card-image");
-    const identityEmpty = document.getElementById("identity-card-empty");
     const identityStatus = document.getElementById("identity-preview-status");
-    let identityObjectUrl = "";
 
     document.getElementById("change-photo-button").addEventListener("click", function () {
         photoInput.click();
@@ -22,12 +17,10 @@
         const file = photoInput.files[0];
         photoInput.value = "";
         if (!file) return;
-
         if (!file.type.startsWith("image/")) {
             window.alert("Choose an image file for your profile photo.");
             return;
         }
-
         const reader = new FileReader();
         reader.addEventListener("load", function () {
             photoImage.src = reader.result;
@@ -50,43 +43,20 @@
     });
 
     identityInput.addEventListener("change", function () {
+        if (!identityInput.files.length) return;
         const file = identityInput.files[0];
-        identityInput.value = "";
-        if (!file) return;
-
-        const extension = file.name.split(".").pop().toLowerCase();
-        const isSupportedImage = ["jpg", "jpeg", "png"].includes(extension)
-            && ["", "image/jpeg", "image/png"].includes(file.type);
-
-        if (!isSupportedImage) {
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!["jpg", "jpeg", "png"].includes(ext)) {
             identityStatus.textContent = "Choose a JPG or PNG image.";
+            identityInput.value = "";
             return;
         }
-
-        if (identityObjectUrl) URL.revokeObjectURL(identityObjectUrl);
-        identityObjectUrl = URL.createObjectURL(file);
-        identityMock.hidden = true;
-        identityEmpty.hidden = true;
-        identityImage.src = identityObjectUrl;
-        identityImage.hidden = false;
-
-        identityStatus.textContent = "Photo preview · Not uploaded";
-    });
-
-    document.getElementById("remove-identity-card").addEventListener("click", function () {
-        if (identityObjectUrl) {
-            URL.revokeObjectURL(identityObjectUrl);
-            identityObjectUrl = "";
+        if (file.size > 5 * 1024 * 1024) {
+            identityStatus.textContent = "File too large (max 5 MB).";
+            identityInput.value = "";
+            return;
         }
-
-        identityImage.removeAttribute("src");
-        identityMock.hidden = true;
-        identityImage.hidden = true;
-        identityEmpty.hidden = false;
-        identityStatus.textContent = "No document selected";
-    });
-
-    window.addEventListener("beforeunload", function () {
-        if (identityObjectUrl) URL.revokeObjectURL(identityObjectUrl);
+        identityStatus.textContent = "Uploading…";
+        document.getElementById("identity-card-form").submit();
     });
 })();

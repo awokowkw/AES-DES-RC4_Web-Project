@@ -1,4 +1,4 @@
-// Tahap 4: pencarian, filter, sort, tampilan, dan aksi mock My Files.
+// My Files: pencarian, filter, sort, tampilan, dan aksi yang tersambung ke backend Django.
 (function () {
     const folderGrid = document.getElementById("folder-grid");
     const fileCollection = document.getElementById("file-collection");
@@ -13,34 +13,45 @@
     const fileGrid = document.getElementById("file-grid");
     const emptyState = document.getElementById("file-empty-state");
     const breadcrumbRoot = document.getElementById("breadcrumb-root");
-    const breadcrumbCurrent = document.getElementById("breadcrumb-current");
     const folderCount = document.getElementById("folder-count");
-    const sectionSubtitle = document.getElementById("files-section-subtitle");
     const contextMenu = document.getElementById("file-context-menu");
     const newFolderDialog = document.getElementById("new-folder-dialog");
-    const newFolderForm = document.getElementById("new-folder-form");
     const newFolderName = document.getElementById("new-folder-name");
-    const toast = document.getElementById("files-toast");
     const fileDetailDialog = document.getElementById("file-detail-dialog");
 
-    let currentFolder = "";
     let contextTarget = null;
     let activeContextButton = null;
-    let toastTimer;
 
-    function showToast(message) {
-        toast.textContent = message;
-        toast.hidden = false;
-        window.clearTimeout(toastTimer);
-        toastTimer = window.setTimeout(function () {
-            toast.hidden = true;
-        }, 3000);
+    // ---------------------------------------------------------- helper
+    function fileItem(name) {
+        return Array.from(document.querySelectorAll(".file-row")).find(function (r) {
+            return r.querySelector(".file-open-button")?.textContent === name;
+        });
+    }
+
+    function folderItem(name) {
+        return Array.from(folderGrid.children).find(function (c) {
+            return c.querySelector(".folder-card-copy strong")?.textContent === name;
+        });
+    }
+
+    function postTo(url) {
+        const tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+        if (!tokenInput || !url) return;
+        const form = document.createElement("form");
+        form.method = "post";
+        form.action = url;
+        const token = document.createElement("input");
+        token.type = "hidden";
+        token.name = "csrfmiddlewaretoken";
+        token.value = tokenInput.value;
+        form.appendChild(token);
+        document.body.appendChild(form);
+        form.submit();
     }
 
     function visibleFileItems() {
-        return Array.from(
-            document.querySelectorAll(".file-row, .file-grid-card")
-        );
+        return Array.from(document.querySelectorAll(".file-row, .file-grid-card"));
     }
 
     function updateFolderCount() {
@@ -48,31 +59,26 @@
         folderCount.textContent = count + (count === 1 ? " folder" : " folders");
     }
 
+    // ------------------------------------------------ filter dan sort
     function applyFilters() {
         const query = searchInput.value.trim().toLowerCase();
         const selectedType = typeFilter.value;
         let visibleCount = 0;
 
         folderGrid.querySelectorAll(".folder-card").forEach(function (card) {
-            const matchesFolder = !currentFolder &&
-                card.dataset.folderName.includes(query);
-            card.hidden = !matchesFolder;
+            card.hidden = !card.dataset.folderName.includes(query);
         });
 
         visibleFileItems().forEach(function (item) {
-            const matchesFolder = !currentFolder ||
-                item.dataset.fileLocation === currentFolder;
             const matchesQuery = !query ||
                 item.dataset.fileName.includes(query) ||
                 item.dataset.fileLocation.toLowerCase().includes(query);
             const matchesType = selectedType === "all" ||
                 item.dataset.fileKind === selectedType;
-            const isVisible = matchesFolder && matchesQuery && matchesType;
+            const isVisible = matchesQuery && matchesType;
 
             item.hidden = !isVisible;
-            if (isVisible) {
-                visibleCount += 1;
-            }
+            if (isVisible) visibleCount += 1;
         });
 
         emptyState.hidden = visibleCount > 0;
@@ -81,20 +87,12 @@
 
     function sortFiles() {
         const sortBy = sortSelect.value;
-        const sortContainers = [
-            document.getElementById("file-table-body"),
-            fileGrid,
-        ];
-
-        sortContainers.forEach(function (container) {
+        [document.getElementById("file-table-body"), fileGrid].forEach(function (container) {
             const items = Array.from(container.children);
             items.sort(function (first, second) {
                 if (sortBy === "name") {
-                    return first.dataset.fileName.localeCompare(
-                        second.dataset.fileName
-                    );
+                    return first.dataset.fileName.localeCompare(second.dataset.fileName);
                 }
-
                 const key = sortBy === "size" ? "fileSize" : "fileModified";
                 return Number(second.dataset[key]) - Number(first.dataset[key]);
             });
@@ -104,32 +102,9 @@
         });
     }
 
-    function openFolder(folderName) {
-        currentFolder = folderName;
-        breadcrumbCurrent.textContent = folderName;
-        breadcrumbCurrent.hidden = false;
-        breadcrumbRoot.removeAttribute("aria-current");
-        sectionSubtitle.textContent = "Files in " + folderName;
-        applyFilters();
-    }
-
-    function showRootFolder() {
-        currentFolder = "";
-        breadcrumbCurrent.textContent = "";
-        breadcrumbCurrent.hidden = true;
-        breadcrumbRoot.setAttribute("aria-current", "page");
-        sectionSubtitle.textContent = "Your recently added files";
-        applyFilters();
-    }
-
-    // Tahap 5: isi dan buka detail dari record file yang sedang ditampilkan.
+    // --------------------------------------------------- detail file
     function openFileDetails(fileName) {
-        const fileRow = Array.from(document.querySelectorAll(".file-row")).find(
-            function (row) {
-                return row.querySelector(".file-open-button")?.textContent === fileName;
-            }
-        );
-
+        const fileRow = fileItem(fileName);
         if (!fileRow) return;
 
         contextTarget = { type: "file", name: fileName };
@@ -138,10 +113,11 @@
         document.getElementById("detail-file-size").textContent = fileRow.cells[2].textContent.trim();
         document.getElementById("detail-file-created").textContent = fileRow.dataset.fileCreated || "—";
         document.getElementById("detail-file-modified").textContent = fileRow.cells[3].textContent.trim();
-        document.getElementById("detail-file-location").textContent = fileRow.dataset.fileLocation;
+        document.getElementById("detail-file-location").textContent = fileRow.dataset.fileLocation || "—";
         fileDetailDialog.showModal();
     }
 
+    // ----------------------------------------------------- menu konteks
     function closeContextMenu() {
         contextMenu.hidden = true;
         if (activeContextButton) {
@@ -160,6 +136,10 @@
         button.setAttribute("aria-expanded", "true");
         contextMenu.hidden = false;
 
+        // Folder: sembunyikan Download (tidak ada unduhan folder)
+        const downloadItem = contextMenu.querySelector('[data-context-action="download"]');
+        if (downloadItem) downloadItem.hidden = contextTarget.type === "folder";
+
         const bounds = button.getBoundingClientRect();
         const menuWidth = contextMenu.offsetWidth;
         const menuHeight = contextMenu.offsetHeight;
@@ -174,98 +154,34 @@
 
         contextMenu.style.left = left + "px";
         contextMenu.style.top = top + "px";
-        contextMenu.querySelector("[role='menuitem']").focus();
+        const firstVisible = contextMenu.querySelector("[role='menuitem']:not([hidden])");
+        if (firstVisible) firstVisible.focus();
     }
 
-    function updateItemName(oldName, newName, itemType) {
-        if (itemType === "file") {
-            document.querySelectorAll(".file-row, .file-grid-card").forEach(function (item) {
-                if (item.querySelector(".file-open-button")?.textContent === oldName ||
-                    item.querySelector(".file-grid-name")?.textContent === oldName) {
-                    item.dataset.fileName = newName.toLowerCase();
-                    const name = item.querySelector(".file-open-button") ||
-                        item.querySelector(".file-grid-name");
-                    if (name) name.textContent = newName;
-                    item.querySelectorAll("[data-context-name]").forEach(function (button) {
-                        button.dataset.contextName = newName;
-                        button.setAttribute("aria-label", "More options for " + newName);
-                    });
-                    item.querySelectorAll("[data-open-file]").forEach(function (button) {
-                        button.dataset.openFile = newName;
-                        button.setAttribute("aria-label", "Show details for " + newName);
-                    });
-                }
-            });
-            return;
-        }
-
-        const folder = Array.from(folderGrid.children).find(function (card) {
-            return card.querySelector("[data-open-folder]")?.dataset.openFolder === oldName;
-        });
-
-        if (folder) {
-            folder.dataset.folderName = newName.toLowerCase();
-            folder.querySelector("[data-open-folder]").dataset.openFolder = newName;
-            folder.querySelector("[data-open-folder]").setAttribute("aria-label", "Open " + newName + " folder");
-            folder.querySelector(".folder-card-copy strong").textContent = newName;
-            folder.querySelector("[data-context-name]").dataset.contextName = newName;
-            folder.querySelector("[data-context-name]").setAttribute("aria-label", "More options for " + newName + " folder");
-        }
-
-        document.querySelectorAll(".file-row, .file-grid-card").forEach(function (item) {
-            if (item.dataset.fileLocation === oldName) {
-                item.dataset.fileLocation = newName;
-                const location = item.querySelector(".file-name-copy span");
-                if (location) location.textContent = newName;
-            }
-        });
-
-        if (currentFolder === oldName) {
-            openFolder(newName);
-        }
-    }
-
+    // ------------------------------------------------- aksi ke backend
     function deleteContextTarget() {
-        if (contextTarget.type === "folder") {
-            const folder = Array.from(folderGrid.children).find(function (card) {
-                return card.querySelector("[data-open-folder]")?.dataset.openFolder === contextTarget.name;
-            });
-            if (folder) folder.remove();
-
-            document.querySelectorAll(".file-row, .file-grid-card").forEach(function (item) {
-                if (item.dataset.fileLocation === contextTarget.name) item.remove();
-            });
-
-            if (currentFolder === contextTarget.name) showRootFolder();
-        } else {
-            document.querySelectorAll(".file-row, .file-grid-card").forEach(function (item) {
-                const name = item.querySelector(".file-open-button") ||
-                    item.querySelector(".file-grid-name");
-                if (name && name.textContent === contextTarget.name) item.remove();
-            });
-        }
-
-        showToast("Removed from this preview.");
-        applyFilters();
+        if (!contextTarget) return;
+        const el = contextTarget.type === "folder"
+            ? folderItem(contextTarget.name) : fileItem(contextTarget.name);
+        if (!el) return;
+        const what = contextTarget.type === "folder" ? "folder and all its contents" : "file";
+        if (!window.confirm('Delete "' + contextTarget.name + '" (' + what + ')? This cannot be undone.')) return;
+        postTo(el.dataset.deleteUrl);
     }
 
-    function createFolder(name) {
-        const card = folderGrid.querySelector(".folder-card").cloneNode(true);
-        const openButton = card.querySelector("[data-open-folder]");
-        const menuButton = card.querySelector("[data-context-name]");
-
-        card.dataset.folderName = name.toLowerCase();
-        openButton.dataset.openFolder = name;
-        openButton.setAttribute("aria-label", "Open " + name + " folder");
-        card.querySelector(".folder-card-copy strong").textContent = name;
-        card.querySelector(".folder-card-copy span").textContent = "0 items";
-        menuButton.dataset.contextName = name;
-        menuButton.setAttribute("aria-label", "More options for " + name + " folder");
-        folderGrid.appendChild(card);
-        applyFilters();
-        showToast("Folder added to this preview.");
+    function downloadContextTarget() {
+        if (!contextTarget || contextTarget.type !== "file") return;
+        const el = fileItem(contextTarget.name);
+        if (el && el.dataset.downloadUrl) window.location.href = el.dataset.downloadUrl;
     }
 
+    function openFolderTarget(name) {
+        const card = folderItem(name);
+        const link = card && card.querySelector("a.folder-open");
+        if (link) window.location.href = link.href;
+    }
+
+    // -------------------------------------------------------- event
     searchInput.addEventListener("input", applyFilters);
     typeFilter.addEventListener("change", applyFilters);
     sortSelect.addEventListener("change", sortFiles);
@@ -283,12 +199,10 @@
         });
     });
 
-    folderGrid.addEventListener("click", function (event) {
-        const openButton = event.target.closest("[data-open-folder]");
-        if (openButton) openFolder(openButton.dataset.openFolder);
+    // Breadcrumb "My Files" kembali ke daftar utama
+    breadcrumbRoot.addEventListener("click", function () {
+        window.location.href = "/files/";
     });
-
-    breadcrumbRoot.addEventListener("click", showRootFolder);
 
     document.addEventListener("click", function (event) {
         const openFileButton = event.target.closest("[data-open-file]");
@@ -317,22 +231,17 @@
 
         if (action === "open") {
             if (target.type === "folder") {
-                openFolder(target.name);
+                openFolderTarget(target.name);
             } else {
                 openFileDetails(target.name);
             }
         } else if (action === "download") {
-            showToast("Download is a preview action; no file is connected.");
-        } else if (action === "rename") {
-            const newName = window.prompt("Enter a new name:", target.name);
-            if (newName && newName.trim() && newName.trim() !== target.name) {
-                updateItemName(target.name, newName.trim(), target.type);
-                showToast("Renamed in this preview.");
-                applyFilters();
-            }
+            downloadContextTarget();
         } else if (action === "delete") {
+            contextTarget = target;
             deleteContextTarget();
         }
+        // "rename": belum ada di backend (tombolnya disembunyikan di template)
     });
 
     document.getElementById("new-folder-button").addEventListener("click", function () {
@@ -350,27 +259,8 @@
     newFolderDialog.addEventListener("click", function (event) {
         if (event.target === newFolderDialog) newFolderDialog.close();
     });
+    // Form buat folder dikirim biasa (POST ke folder_create), tanpa handler JS.
 
-    newFolderForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const name = newFolderName.value.trim();
-        if (!name) return;
-
-        const exists = Array.from(folderGrid.children).some(function (card) {
-            return card.dataset.folderName === name.toLowerCase();
-        });
-        if (exists) {
-            newFolderName.setCustomValidity("A folder with this name already exists.");
-            newFolderName.reportValidity();
-            newFolderName.setCustomValidity("");
-            return;
-        }
-
-        newFolderDialog.close();
-        createFolder(name);
-    });
-
-    // Tahap 5: detail file menyediakan aksi preview lokal tanpa backend.
     document.querySelectorAll("[data-detail-close]").forEach(function (button) {
         button.addEventListener("click", function () {
             fileDetailDialog.close();
@@ -381,34 +271,14 @@
         if (event.target === fileDetailDialog) fileDetailDialog.close();
     });
 
-    document.getElementById("detail-download-button").addEventListener("click", function () {
-        showToast("Download is a preview action; no file is connected.");
-    });
+    document.getElementById("detail-download-button").addEventListener("click", downloadContextTarget);
 
-    document.getElementById("detail-rename-button").addEventListener("click", function () {
-        if (!contextTarget) return;
-        const target = contextTarget;
-        fileDetailDialog.close();
-        const newName = window.prompt("Enter a new name:", target.name);
-        if (newName && newName.trim() && newName.trim() !== target.name) {
-            updateItemName(target.name, newName.trim(), "file");
-            showToast("Renamed in this preview.");
-            applyFilters();
-        }
-    });
-
-    document.getElementById("detail-delete-button").addEventListener("click", function () {
-        if (!contextTarget) return;
-        const shouldDelete = window.confirm("Remove this file from the preview?");
-        if (!shouldDelete) return;
-        fileDetailDialog.close();
-        deleteContextTarget();
-    });
+    document.getElementById("detail-delete-button").addEventListener("click", deleteContextTarget);
 
     document.getElementById("clear-file-filters").addEventListener("click", function () {
         searchInput.value = "";
         typeFilter.value = "all";
-        showRootFolder();
+        applyFilters();
     });
 
     document.addEventListener("keydown", function (event) {
