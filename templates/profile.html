@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile · SYNK{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block body_class %}profile-page{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block sidebar_toggle %}{% endblock %}
+
+{% block content %}
+<div class="profile-page-content">
+    <section class="profile-intro-card" aria-labelledby="profile-title">
+        <div class="profile-photo-wrap">
+            <div class="profile-photo-preview" id="profile-photo-preview" aria-label="Profile photo preview">
+                <span id="profile-initials">{{ profile.initials }}</span>
+                <img id="profile-photo-image" alt="Profile photo" hidden>
+            </div>
+            <span class="profile-photo-status" aria-hidden="true"></span>
+        </div>
+        <div class="profile-intro-copy">
+            <p class="dashboard-kicker">YOUR ACCOUNT</p>
+            <h2 id="profile-title">{{ profile.full_name }}</h2>
+            <p>@{{ profile.username }} <span aria-hidden="true">·</span> Personal account</p>
+        </div>
+        <div class="profile-photo-actions">
+            <input class="visually-hidden" id="profile-photo-input" type="file" accept="image/*">
+            <button class="secondary-button" id="change-photo-button" type="button">Change photo</button>
+            <button class="text-button" id="remove-photo-button" type="button" disabled>Remove</button>
+        </div>
+    </section>
+
+    <section class="dashboard-card profile-information-card" aria-labelledby="personal-info-heading">
+        <div class="profile-section-heading">
+            <div>
+                <p class="card-eyebrow">ACCOUNT DETAILS</p>
+                <h3 id="personal-info-heading">Personal information</h3>
+            </div>
+            <span class="profile-section-caption">Encrypted with AES, RC4 and DES</span>
+        </div>
+
+        <dl class="profile-information-grid">
+            <div class="profile-field"><dt>Username</dt><dd>{{ profile.username }}</dd></div>
+            <div class="profile-field"><dt>Email address</dt><dd>{{ profile.email }}</dd></div>
+        </dl>
+
+        <form method="post" class="profile-edit-form">
+            {% csrf_token %}
+            <div class="profile-information-grid">
+                {% for field in form %}
+                <div class="profile-field">
+                    <label class="dialog-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for e in field.errors %}<p class="field-error" style="color:#b42318">{{ e }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            <button class="primary-button" type="submit">Save changes</button>
+        </form>
+    </section>
+
+    <section class="dashboard-card identity-card-section" aria-labelledby="identity-card-heading">
+        <div class="profile-section-heading">
+            <div>
+                <p class="card-eyebrow">PRIVATE DOCUMENT</p>
+                <h3 id="identity-card-heading">Identity card</h3>
+            </div>
+            <span class="identity-card-status"><span aria-hidden="true"></span>
+                {% if id_card %}Saved (encrypted){% else %}Not uploaded{% endif %}</span>
+        </div>
+
+        <p class="identity-privacy-notice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.25c0 4.3-2.85 7.5-7 9.25-4.15-1.75-7-4.95-7-9.25V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+            Your identity document is private and only accessible from your account.
+        </p>
+
+        <div class="identity-preview-stage">
+            {% if id_card %}
+            <img class="identity-image-preview" src="{% url 'file_download' id_card.pk %}?inline=1" alt="Identity card">
+            {% else %}
+            <div class="identity-empty-state" id="identity-card-empty">
+                <span class="empty-state-icon" aria-hidden="true">＋</span>
+                <strong>No document uploaded</strong>
+                <span>Choose a JPG or PNG photo to upload it.</span>
+            </div>
+            {% endif %}
+            <img class="identity-image-preview" id="identity-card-image" alt="" hidden>
+            <div id="identity-card-mock" hidden></div>
+        </div>
+
+        <form class="identity-card-actions" id="identity-card-form" method="post"
+              action="{% url 'id_card_upload' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input class="visually-hidden" id="identity-card-input" name="file" type="file"
+                   accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+            <button class="secondary-button" id="replace-identity-card" type="button">
+                {% if id_card %}Replace document{% else %}Upload document{% endif %}
+            </button>
+            <span class="identity-local-note" id="identity-preview-status" role="status" aria-live="polite">
+                {% if id_card %}{{ id_card.display_name }}{% else %}JPG or PNG, max 5 MB{% endif %}
+            </span>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/profile-ui.js' %}" defer></script>
+{% endblock %}
