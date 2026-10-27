@@ -326,6 +326,7 @@ def present_file(sf, data_key):
     ext = os.path.splitext(name)[1].lower()
     kind, label = FILE_KINDS.get(ext, ('file', 'File'))
     created = timezone.localtime(sf.created)
+    
     return SimpleNamespace(
         pk=sf.pk, name=name, display_name=name, kind=kind, type=label,
         extension=ext.lstrip('.').upper(),
@@ -334,7 +335,8 @@ def present_file(sf, data_key):
         modified_sort=int(created.strftime('%Y%m%d%H%M')),
         location=sf.folder.name if sf.folder_id else '',
         download_url=reverse('file_download', args=[sf.pk]),
-        delete_url=reverse('file_delete', args=[sf.pk]))
+        delete_url=reverse('file_delete', args=[sf.pk]),
+        rename_url=reverse('file_rename', args=[sf.pk]))
 
 
 def present_folder(f):
@@ -343,8 +345,9 @@ def present_folder(f):
         pk=f.pk, name=f.name, item_count=f.nf + f.nc,
         kind=FOLDER_KIND.get(f.name, 'folder-personal'),
         url=reverse('folder_detail', args=[f.pk]),
-        delete_url=reverse('folder_delete', args=[f.pk]))
-
+        delete_url=reverse('folder_delete', args=[f.pk]),
+        rename_url=reverse('folder_rename', args=[f.pk]),
+        download_url=reverse('folder_download', args=[f.pk]))
 
 ACTIVITY = {'upload': ('Uploaded', 'upload'), 'download': ('Downloaded', 'open')}
 
@@ -356,3 +359,86 @@ def recent_events(user, data_key, limit=30):
     files = {f.pk: f for f in StoredFile.objects.filter(
         owner=user, pk__in=[l.file_id for l in logs]).select_related('folder')}
     return [(l, present_file(files[l.file_id], data_key)) for l in logs if l.file_id in files]
+
+# ------------------------------------------------------- rename & unduh folder
+def _valid_name(name, limit):
+    name = (name or '').strip()
+    if not name or len(name) > limit or '/' in name or '\\' in name or name in ('.', '..'):
+        raise UploadError('nama tidak valid')
+    return name
+
+
+def rename_file(stored, data_key, new_name):
+    new_name = _valid_name(new_name, 150)
+    exts = KINDS[stored.kind][0]
+    if os.path.splitext(new_name)[1].lower() not in exts:
+        raise UploadError(f'ekstensi harus salah satu dari {sorted(exts)}')
+    n = crypto.seal(data_key, new_name.encode())
+    stored.name_aes, stored.name_rc4, stored.name_des = n['aes'], n['rc4'], n['des']
+    stored.save(update_fields=['name_aes', 'name_rc4', 'name_des'])
+
+
+def rename_folder(user, folder, new_name):
+    new_name = _valid_name(new_name, 100)
+    if folder.parent_id is None and (folder.name in DEFAULT_FOLDERS or new_name in DEFAULT_FOLDERS):
+        raise UploadError('folder bawaan tidak bisa diganti namanya')
+    if Folder.objects.filter(owner=user, parent=folder.parent, name=new_name) \
+            .exclude(pk=folder.pk).exists():
+        raise UploadError('nama folder sudah dipakai')
+    folder.name = new_name
+    folder.save(update_fields=['name'])
+
+
+def folder_to_zip(folder, data_key):
+    """ZIP seluruh isi folder (termasuk subfolder). Tiap file didekripsi dengan
+    AES, RC4, DES, dipastikan identik, lalu satu salinan masuk ZIP.
+    Return (file_sementara, timings, total_plaintext_bytes, jumlah_file)."""
+    tmp = tempfile.TemporaryFile()
+    timings = dict.fromkeys(crypto.ALGOS, 0.0)
+    total = count = 0
+    try:
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_STORED) as zf:
+            stack = [(folder, folder.name)]
+            while stack:
+                f, prefix = stack.pop()
+                zf.writestr(prefix + '/', b'')            # pertahankan folder kosong
+                used = set()
+                for sf in StoredFile.objects.filter(owner=folder.owner, folder=f):
+                    name = stored_filename(sf, data_key).replace('/', '_').replace('\\', '_')
+                    base, ext = os.path.splitext(name)
+                    candidate, i = name, 1
+                    while candidate in used:
+                        i += 1
+                        candidate = f'{base} ({i}){ext}'
+                    used.add(candidate)
+
+                    digests = {}
+                    entry = zf.open(f'{prefix}/{candidate}', 'w', force_zip64=True)
+                    try:
+                        for a in crypto.ALGOS:            # 'aes' pertama: hanya ia yang ditulis
+                            h = hashlib.sha256()
+                            gen = open_stored_file(sf, data_key, a)
+                            while True:
+                                t0 = time.perf_counter()
+                                chunk = next(gen, None)
+                                timings[a] += time.perf_counter() - t0
+                                if chunk is None:
+                                    break
+                                h.update(chunk)
+                                if a == 'aes':
+                                    entry.write(chunk)
+                            digests[a] = h.hexdigest()
+                    finally:
+                        entry.close()
+                    if len(set(digests.values())) != 1:
+                        raise crypto.IntegrityError('hasil dekripsi AES/RC4/DES tidak sama')
+                    total += sf.size
+                    count += 1
+
+                for child in Folder.objects.filter(owner=folder.owner, parent=f):
+                    stack.append((child, f'{prefix}/{child.name}'))
+    except Exception:
+        tmp.close()
+        raise
+    tmp.seek(0)
+    return tmp, timings, total, count

@@ -230,3 +230,30 @@ class ViewTests(TestCase):
         c = Client()
         c.force_login(admin_user)
         self.assertEqual(c.get('/admin/vault/cryptolog/').status_code, 200)
+
+    def test_rename_file_and_extension_guard(self):
+        self._upload(folder=self.docs)
+        sf = StoredFile.objects.get(owner=self.ua)
+        self.a.post(reverse('file_rename', args=[sf.pk]), {'name': 'baru.pdf'})
+        r = self.a.get(reverse('folder_detail', args=[self.docs.pk]))
+        self.assertEqual([f.display_name for f in r.context['files']], ['baru.pdf'])
+        self.a.post(reverse('file_rename', args=[sf.pk]), {'name': 'baru.exe'})
+        r = self.a.get(reverse('folder_detail', args=[self.docs.pk]))
+        self.assertEqual([f.display_name for f in r.context['files']], ['baru.pdf'])
+
+    def test_rename_folder_rules(self):
+        self.a.post(reverse('folder_create'), {'name': 'Kuliah', 'parent': self.docs.pk})
+        sub = Folder.objects.get(owner=self.ua, name='Kuliah')
+        self.a.post(reverse('folder_rename', args=[sub.pk]), {'name': 'Tugas'})
+        self.assertTrue(Folder.objects.filter(owner=self.ua, name='Tugas').exists())
+        self.a.post(reverse('folder_rename', args=[self.docs.pk]), {'name': 'Lain'})
+        self.assertTrue(Folder.objects.filter(pk=self.docs.pk, name='Dokumen').exists())
+
+    def test_folder_download_zip_and_isolation(self):
+        self._upload(folder=self.docs)
+        d = self.a.get(reverse('folder_download', args=[self.docs.pk]))
+        z = zipfile.ZipFile(io.BytesIO(b''.join(d.streaming_content)))
+        self.assertEqual(z.read('Dokumen/catatan.pdf'), b'isi rahasia budi')
+        self.assertEqual(self.b.get(reverse('folder_download', args=[self.docs.pk])).status_code, 404)
+        self.assertEqual(self.b.post(reverse('file_rename', args=[StoredFile.objects.get(owner=self.ua).pk]),
+                                     {'name': 'x.pdf'}).status_code, 404)

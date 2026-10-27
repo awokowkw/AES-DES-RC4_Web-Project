@@ -22,4 +22,7 @@ urlpatterns = [
     path('drive/upload/', views.file_upload, name='file_upload'),
     path('drive/file/<int:pk>/download/', views.file_download, name='file_download'),
     path('drive/file/<int:pk>/delete/', views.file_delete, name='file_delete'),
+    path('drive/file/<int:pk>/rename/', views.file_rename, name='file_rename'),
+    path('drive/folder/<int:pk>/rename/', views.folder_rename, name='folder_rename'),
+    path('drive/folder/<int:pk>/download/', views.folder_download, name='folder_download'),
 ]

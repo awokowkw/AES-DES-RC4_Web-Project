@@ -35,17 +35,26 @@
         });
     }
 
-    function postTo(url) {
+    function targetElement() {
+        if (!contextTarget) return null;
+        return contextTarget.type === "folder"
+            ? folderItem(contextTarget.name) : fileItem(contextTarget.name);
+    }
+
+    function postTo(url, fields) {
         const tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
         if (!tokenInput || !url) return;
         const form = document.createElement("form");
         form.method = "post";
         form.action = url;
-        const token = document.createElement("input");
-        token.type = "hidden";
-        token.name = "csrfmiddlewaretoken";
-        token.value = tokenInput.value;
-        form.appendChild(token);
+        const all = Object.assign({ csrfmiddlewaretoken: tokenInput.value }, fields || {});
+        Object.keys(all).forEach(function (key) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = all[key];
+            form.appendChild(input);
+        });
         document.body.appendChild(form);
         form.submit();
     }
@@ -136,10 +145,6 @@
         button.setAttribute("aria-expanded", "true");
         contextMenu.hidden = false;
 
-        // Folder: sembunyikan Download (tidak ada unduhan folder)
-        const downloadItem = contextMenu.querySelector('[data-context-action="download"]');
-        if (downloadItem) downloadItem.hidden = contextTarget.type === "folder";
-
         const bounds = button.getBoundingClientRect();
         const menuWidth = contextMenu.offsetWidth;
         const menuHeight = contextMenu.offsetHeight;
@@ -160,9 +165,7 @@
 
     // ------------------------------------------------- aksi ke backend
     function deleteContextTarget() {
-        if (!contextTarget) return;
-        const el = contextTarget.type === "folder"
-            ? folderItem(contextTarget.name) : fileItem(contextTarget.name);
+        const el = targetElement();
         if (!el) return;
         const what = contextTarget.type === "folder" ? "folder and all its contents" : "file";
         if (!window.confirm('Delete "' + contextTarget.name + '" (' + what + ')? This cannot be undone.')) return;
@@ -170,9 +173,16 @@
     }
 
     function downloadContextTarget() {
-        if (!contextTarget || contextTarget.type !== "file") return;
-        const el = fileItem(contextTarget.name);
+        const el = targetElement();
         if (el && el.dataset.downloadUrl) window.location.href = el.dataset.downloadUrl;
+    }
+
+    function renameContextTarget() {
+        const el = targetElement();
+        if (!el || !el.dataset.renameUrl) return;
+        const newName = window.prompt("Enter a new name:", contextTarget.name);
+        if (!newName || !newName.trim() || newName.trim() === contextTarget.name) return;
+        postTo(el.dataset.renameUrl, { name: newName.trim() });
     }
 
     function openFolderTarget(name) {
@@ -228,6 +238,7 @@
         const action = actionButton.dataset.contextAction;
         const target = contextTarget;
         closeContextMenu();
+        contextTarget = target;
 
         if (action === "open") {
             if (target.type === "folder") {
@@ -237,11 +248,11 @@
             }
         } else if (action === "download") {
             downloadContextTarget();
+        } else if (action === "rename") {
+            renameContextTarget();
         } else if (action === "delete") {
-            contextTarget = target;
             deleteContextTarget();
         }
-        // "rename": belum ada di backend (tombolnya disembunyikan di template)
     });
 
     document.getElementById("new-folder-button").addEventListener("click", function () {
@@ -272,6 +283,13 @@
     });
 
     document.getElementById("detail-download-button").addEventListener("click", downloadContextTarget);
+
+    document.getElementById("detail-rename-button").addEventListener("click", function () {
+        const target = contextTarget;
+        fileDetailDialog.close();
+        contextTarget = target;
+        renameContextTarget();
+    });
 
     document.getElementById("detail-delete-button").addEventListener("click", deleteContextTarget);
 

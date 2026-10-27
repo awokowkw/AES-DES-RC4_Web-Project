@@ -247,3 +247,42 @@ def security(request):
 @vault_unlocked
 def settings_page(request):
     return render(request, 'settings.html', {'active_page': 'settings'})
+
+@vault_unlocked
+@require_POST
+def file_rename(request, pk):
+    stored = get_object_or_404(StoredFile, pk=pk, owner=request.user)
+    try:
+        services.rename_file(stored, request.data_key, request.POST.get('name'))
+        messages.success(request, 'Nama file diubah.')
+    except services.UploadError as e:
+        messages.error(request, str(e))
+    return _back(stored.folder)
+
+
+@vault_unlocked
+@require_POST
+def folder_rename(request, pk):
+    folder = get_object_or_404(Folder, pk=pk, owner=request.user)
+    try:
+        services.rename_folder(request.user, folder, request.POST.get('name'))
+        messages.success(request, 'Nama folder diubah.')
+    except services.UploadError as e:
+        messages.error(request, str(e))
+    return _back(folder.parent)
+
+
+@vault_unlocked
+def folder_download(request, pk):
+    folder = get_object_or_404(Folder, pk=pk, owner=request.user)
+    try:
+        tmp, timings, total, count = services.folder_to_zip(folder, request.data_key)
+    except (crypto.IntegrityError, OSError):
+        return HttpResponse('Data gagal lolos verifikasi integritas.', status=500)
+    if count:
+        services.log_crypto(request.user, 'download_folder', timings, total, items=count)
+    resp = FileResponse(tmp, as_attachment=True, filename=f'{folder.name}.zip',
+                        content_type='application/zip')
+    resp['X-Content-Type-Options'] = 'nosniff'
+    resp['Cache-Control'] = 'private, no-store'
+    return resp

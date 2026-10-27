@@ -4,7 +4,6 @@
 {% block page_title %}Security{% endblock %}
 
 {% block content %}
-<!-- Tahap 7: ringkasan status dan tabel hasil contoh dari pengujian backend. -->
 <div class="stage-seven-page">
     <header class="stage-seven-heading">
         <div>
@@ -21,9 +20,15 @@
                 <p class="card-eyebrow">FILE TEST RESULTS</p>
                 <h3 id="comparison-heading">Algorithm comparison</h3>
             </div>
-            <span class="preview-data-badge">Sample results</span>
+            <span class="preview-data-badge">Admin only</span>
         </div>
-        <p class="comparison-caption">Sample values are shown for preview and can be replaced with backend test results when supplied.</p>
+        <p class="comparison-caption">
+            {% if user.is_staff %}
+                Encryption and decryption time and size for AES, RC4 and DES, measured on real uploads and downloads.
+            {% else %}
+                Detailed results are available to administrators.
+            {% endif %}
+        </p>
         <div class="recent-table-wrap">
             <table class="stage-seven-table comparison-table">
                 <thead>
@@ -47,7 +52,15 @@
                         <td>{{ result.encrypted_size }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td class="table-empty-state" colspan="6">No comparison results are available.</td></tr>
+                    <tr>
+                        <td class="table-empty-state" colspan="6">
+                            {% if user.is_staff %}
+                                No comparison results yet. Upload or download a file to generate results.
+                            {% else %}
+                                Detailed results are available to administrators.
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
