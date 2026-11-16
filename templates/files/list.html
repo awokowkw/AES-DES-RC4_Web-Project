@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Files · SYNK{% endblock %}
+{% block page_title %}My Files{% endblock %}
+
+{% block content %}
+<section class="files-page" aria-labelledby="files-heading">
+    <div class="files-heading-row">
+        <div>
+            <p class="dashboard-kicker">YOUR PERSONAL CLOUD</p>
+            <h2 id="files-heading">My Files</h2>
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <button class="breadcrumb-root" type="button" id="breadcrumb-root" {% if not folder %}aria-current="page"{% endif %}>My Files</button>
+                {% for b in breadcrumbs %}
+                <span aria-hidden="true">/</span>
+                <span>{{ b.name }}</span>
+                {% endfor %}
+            </nav>
+        </div>
+    </div>
+
+    <div class="file-toolbar">
+        <label class="file-search" for="file-search-input">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+            <input id="file-search-input" type="search" placeholder="Search files and folders" autocomplete="off">
+        </label>
+
+        <div class="toolbar-selects">
+            <label class="visually-hidden" for="file-type-filter">Filter by file type</label>
+            <select id="file-type-filter">
+                <option value="all">All types</option>
+                <option value="pdf">PDF</option>
+                <option value="document">Documents</option>
+                <option value="spreadsheet">Spreadsheets</option>
+                <option value="image">Images</option>
+                <option value="video">Videos</option>
+            </select>
+
+            <label class="visually-hidden" for="file-sort">Sort files</label>
+            <select id="file-sort">
+                <option value="name">Name</option>
+                <option value="modified">Recently modified</option>
+                <option value="size">File size</option>
+            </select>
+        </div>
+
+        <div class="toolbar-actions">
+            <button class="secondary-button" id="new-folder-button" type="button">
+                <span aria-hidden="true">＋</span> New folder
+            </button>
+            <button class="primary-button upload-trigger" id="upload-trigger" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 15v4.25A.75.75 0 0 0 4.75 20h14.5a.75.75 0 0 0 .75-.75V15"/></svg>
+                Upload
+            </button>
+        </div>
+    </div>
+
+    <section class="folders-section" aria-labelledby="folders-heading">
+        <div class="files-section-heading">
+            <div>
+                <h3 id="folders-heading">Folders</h3>
+                <span class="section-subtitle">Organize your files into collections</span>
+            </div>
+            <span class="section-count" id="folder-count">{{ folders|length }} folders</span>
+        </div>
+
+        <div class="folder-grid" id="folder-grid">
+            {% for f in folders %}
+            <article class="folder-card" data-folder-name="{{ f.name|lower }}" data-delete-url="{{ f.delete_url }}" data-rename-url="{{ f.rename_url }}" data-download-url="{{ f.download_url }}">
+                <a class="folder-open" href="{{ f.url }}" aria-label="Open {{ f.name }} folder" style="text-decoration:none;color:inherit">
+                    <span class="folder-icon {{ f.kind }}" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2h9v9.75A1.75 1.75 0 0 1 18.75 20h-13.5A1.75 1.75 0 0 1 3.5 18.25Z"/><path d="M3.5 9h17"/></svg>
+                    </span>
+                    <span class="folder-card-copy">
+                        <strong>{{ f.name }}</strong>
+                        <span>{{ f.item_count }} items</span>
+                    </span>
+                </a>
+                <button class="context-trigger" type="button" data-context-type="folder" data-context-name="{{ f.name }}" aria-label="More options for {{ f.name }} folder" aria-haspopup="menu" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+                </button>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="files-section" aria-labelledby="files-list-heading">
+        <div class="files-section-heading">
+            <div>
+                <h3 id="files-list-heading">Files</h3>
+                <span class="section-subtitle" id="files-section-subtitle">{% if folder %}Files in {{ folder.name }}{% else %}Your recently added files{% endif %}</span>
+            </div>
+            <div class="view-toggle" role="group" aria-label="File layout">
+                <button type="button" class="view-toggle-button is-selected" data-view-button="list" aria-label="List view" aria-pressed="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                </button>
+                <button type="button" class="view-toggle-button" data-view-button="grid" aria-label="Grid view" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="file-collection" id="file-collection" data-view="list">
+            <div class="file-table-wrap">
+                <table class="file-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Size</th>
+                            <th scope="col">Modified</th>
+                            <th scope="col"><span class="visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="file-table-body">
+                        {% for file in files %}
+                        <tr class="file-row" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}">
+                            <td>
+                                <div class="file-name-cell">
+                                    <span class="file-type-icon file-type-{{ file.kind }}" aria-hidden="true"><span>{{ file.extension|slice:":3" }}</span></span>
+                                    <span class="file-name-copy"><button class="file-open-button" type="button" data-open-file="{{ file.name }}">{{ file.name }}</button><span>{{ file.location }}</span></span>
+                                </div>
+                            </td>
+                            <td>{{ file.type }}</td>
+                            <td>{{ file.size }}</td>
+                            <td>{{ file.modified }}</td>
+                            <td class="file-actions-cell">
+                                <button class="context-trigger" type="button" data-context-type="file" data-context-name="{{ file.name }}" aria-label="More options for {{ file.name }}" aria-haspopup="menu" aria-expanded="false">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="file-grid" id="file-grid" hidden>
+                {% for file in files %}
+                <article class="file-grid-card" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}">
+                    <div class="file-grid-card-top">
+                        <span class="file-type-icon file-type-{{ file.kind }}" aria-hidden="true"><span>{{ file.extension|slice:":3" }}</span></span>
+                        <button class="context-trigger" type="button" data-context-type="file" data-context-name="{{ file.name }}" aria-label="More options for {{ file.name }}" aria-haspopup="menu" aria-expanded="false">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+                        </button>
+                    </div>
+                    <button class="file-open-button file-grid-name" type="button" data-open-file="{{ file.name }}">{{ file.name }}</button>
+                    <span class="file-grid-meta">{{ file.size }} <span aria-hidden="true">·</span> {{ file.modified }}</span>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="file-empty-state" id="file-empty-state" hidden>
+                <span class="empty-state-icon" aria-hidden="true">⌕</span>
+                <h4>No files found</h4>
+                <p>Try changing your search or file type filter.</p>
+                <button type="button" id="clear-file-filters" class="text-button">Clear filters</button>
+            </div>
+        </div>
+    </section>
+</section>
+
+<form id="real-upload-form" method="post" action="{% url 'file_upload' %}"
+      enctype="multipart/form-data" hidden>
+    {% csrf_token %}
+    <input type="hidden" name="folder" value="{{ folder.pk|default:'' }}">
+    <input type="file" name="file" id="real-file-input" multiple>
+</form>
+
+<dialog class="upload-dialog" id="upload-dialog" aria-labelledby="upload-dialog-title">
+    <div class="upload-dialog-content">
+        <div class="dialog-heading-row">
+            <div>
+                <p class="card-eyebrow">MY FILES</p>
+                <h2 id="upload-dialog-title">Upload files</h2>
+            </div>
+            <button class="dialog-close" type="button" data-upload-close aria-label="Close upload dialog">×</button>
+        </div>
+
+        <div class="drop-zone" id="upload-drop-zone" tabindex="0" role="button" aria-label="Choose files or drop them here">
+            <span class="drop-zone-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 15v4.25A.75.75 0 0 0 4.75 20h14.5a.75.75 0 0 0 .75-.75V15"/></svg>
+            </span>
+            <strong>Drop files here</strong>
+            <span>or</span>
+            <button class="secondary-button" id="browse-files-button" type="button">Browse files</button>
+            <input class="visually-hidden" id="upload-file-input" type="file" multiple>
+            <span class="drop-zone-help">Choose one or more files from your device</span>
+        </div>
+
+        <div class="upload-queue-heading">
+            <h3>Selected files</h3>
+            <span id="upload-file-count">0 files</span>
+        </div>
+        <div class="upload-file-list" id="upload-file-list" aria-live="polite">
+            <p class="upload-queue-empty" id="upload-queue-empty">No files selected yet.</p>
+        </div>
+
+        <p class="upload-preview-note">Files are encrypted with AES, RC4 and DES before being stored.</p>
+        <div class="upload-dialog-actions">
+            <button class="secondary-button" type="button" data-upload-cancel>Cancel</button>
+            <button class="primary-button" id="start-upload-button" type="button" disabled>Start upload</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="file-detail-dialog" id="file-detail-dialog" aria-labelledby="detail-file-name">
+    <div class="file-detail-content">
+        <div class="dialog-heading-row">
+            <div>
+                <p class="card-eyebrow">FILE DETAILS</p>
+                <h2 id="detail-file-name">File name</h2>
+            </div>
+            <button class="dialog-close" type="button" data-detail-close aria-label="Close file details">×</button>
+        </div>
+
+        <div class="protected-file-badge"><span aria-hidden="true">✓</span> Protected file</div>
+        <dl class="file-detail-list">
+            <div><dt>Type</dt><dd id="detail-file-type">—</dd></div>
+            <div><dt>Size</dt><dd id="detail-file-size">—</dd></div>
+            <div><dt>Created</dt><dd id="detail-file-created">—</dd></div>
+            <div><dt>Modified</dt><dd id="detail-file-modified">—</dd></div>
+            <div><dt>Location</dt><dd id="detail-file-location">—</dd></div>
+            <div><dt>Status</dt><dd>Protected file</dd></div>
+        </dl>
+
+        <div class="file-detail-actions">
+            <button class="secondary-button" id="detail-rename-button" type="button">Rename</button>
+            <button class="secondary-button danger-outline-button" id="detail-delete-button" type="button">Delete</button>
+            <button class="primary-button" id="detail-download-button" type="button">Download</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="new-folder-dialog" id="new-folder-dialog" aria-labelledby="new-folder-title">
+    <form id="new-folder-form" method="post" action="{% url 'folder_create' %}">
+        {% csrf_token %}
+        <input type="hidden" name="parent" value="{{ folder.pk|default:'' }}">
+        <div class="dialog-heading-row">
+            <div>
+                <p class="card-eyebrow">MY FILES</p>
+                <h2 id="new-folder-title">Create a folder</h2>
+            </div>
+            <button class="dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+        </div>
+        <label class="dialog-label" for="new-folder-name">Folder name</label>
+        <input id="new-folder-name" name="name" type="text" maxlength="40" placeholder="e.g. Work documents" required>
+        <p class="dialog-help">The folder is created inside the current location.</p>
+        <div class="dialog-actions">
+            <button class="secondary-button" type="button" data-close-dialog>Cancel</button>
+            <button class="primary-button" type="submit" value="create">Create folder</button>
+        </div>
+    </form>
+</dialog>
+
+<div class="context-menu" id="file-context-menu" role="menu" aria-label="File actions" hidden>
+    <button type="button" role="menuitem" data-context-action="open">Open</button>
+    <button type="button" role="menuitem" data-context-action="download">Download</button>
+    <button type="button" role="menuitem" data-context-action="rename">Rename</button>
+    <button type="button" role="menuitem" data-context-action="delete" class="danger-action">Delete</button>
+</div>
+
+<div class="files-toast" id="files-toast" role="status" aria-live="polite" hidden></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/files-ui.js' %}" defer></script>
+<script src="{% static 'js/upload-ui.js' %}" defer></script>
+{% endblock %}

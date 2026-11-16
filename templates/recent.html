@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Recent · SYNK{% endblock %}
+{% block page_title %}Recent{% endblock %}
+
+{% block content %}
+<!-- Tahap 7: aktivitas file dikelompokkan dengan pola tabel My Files. -->
+<div class="stage-seven-page">
+    <header class="stage-seven-heading">
+        <div>
+            <p class="dashboard-kicker">YOUR ACTIVITY</p>
+            <h2>Recent files</h2>
+            <p>Pick up where you left off across your personal files.</p>
+        </div>
+        <span class="preview-data-badge">Preview data</span>
+    </header>
+
+    {% for section_title, section_label, section_id, entries in recent_sections %}
+    <section class="dashboard-card recent-section" aria-labelledby="recent-{{ section_id }}">
+        <div class="section-heading-row">
+            <div>
+                <p class="card-eyebrow">{{ section_label }}</p>
+                <h3 id="recent-{{ section_id }}">{{ section_title }}</h3>
+            </div>
+            <span class="section-count">{{ entries|length }} items</span>
+        </div>
+        <div class="recent-table-wrap">
+            <table class="stage-seven-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Size</th>
+                        <th scope="col">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td class="table-file-name"><span class="file-type-icon file-type-{{ entry.file.kind }}" aria-hidden="true">{{ entry.file.extension }}</span>{{ entry.file.name }}</td>
+                        <td>{{ entry.file.type }}</td>
+                        <td>{{ entry.file.size }}</td>
+                        <td>{{ entry.time }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="table-empty-state" colspan="4">No files in this activity yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

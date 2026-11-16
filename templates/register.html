@@ -1,0 +1,108 @@
+{% load static %}
+<!-- Tahap 2: halaman Register dan validasi form Django. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8fa">
+    <title>Create account · SYNK</title>
+    <script src="{% static 'js/theme.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="auth-page">
+    <main class="auth-layout auth-layout-register">
+        <section class="auth-panel" aria-labelledby="register-title">
+            <a class="brand auth-brand" href="/" aria-label="SYNK sign in">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32"><path d="M9 10.5h14M9 16h14M9 21.5h9"/><path d="M6.5 5.5h19a2 2 0 0 1 2 2v17a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2v-17a2 2 0 0 1 2-2Z"/></svg>
+                </span>
+                <span class="brand-copy">
+                    <span class="brand-name">SYNK</span>
+                    <span class="brand-caption">Personal cloud</span>
+                </span>
+            </a>
+
+            <div class="auth-heading">
+                <span class="auth-kicker">A SPACE OF YOUR OWN</span>
+                <h1 id="register-title">Create your account</h1>
+                <p>Set up your personal cloud in a few steps.</p>
+            </div>
+
+            {% if form.errors %}
+            <div class="form-message" id="register-message" role="alert" aria-live="polite">
+                Please review the highlighted fields and try again.
+                {% for error in form.non_field_errors %}<span class="message-detail">{{ error }}</span>{% endfor %}
+            </div>
+            {% else %}
+            <div class="form-message" id="register-message" role="status" aria-live="polite" hidden></div>
+            {% endif %}
+
+            <form class="auth-form" id="register-form" method="post" novalidate>
+                {% csrf_token %}
+                <div class="field-group">
+                    <label for="full-name">Full name</label>
+                    <input id="full-name" name="full_name" type="text" autocomplete="name" placeholder="Your full name" value="{{ form.full_name.value|default_if_none:'' }}" required aria-invalid="{% if form.full_name.errors %}true{% else %}false{% endif %}" aria-describedby="full-name-error">
+                    <span class="field-error" id="full-name-error">{% for error in form.full_name.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" placeholder="Choose a username" value="{{ form.username.value|default_if_none:'' }}" required aria-invalid="{% if form.username.errors %}true{% else %}false{% endif %}" aria-describedby="username-error">
+                    <span class="field-error" id="username-error">{% for error in form.username.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="register-email">Email</label>
+                    <input id="register-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" value="{{ form.email.value|default_if_none:'' }}" required aria-invalid="{% if form.email.errors %}true{% else %}false{% endif %}" aria-describedby="register-email-error">
+                    <span class="field-error" id="register-email-error">{% for error in form.email.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="register-password">Password</label>
+                    <div class="password-field">
+                        <input id="register-password" name="password1" type="password" autocomplete="new-password" placeholder="Create a password" required aria-describedby="password-strength-text register-password-error" aria-invalid="{% if form.password1.errors or form.password2.errors %}true{% else %}false{% endif %}">
+                        <button class="password-toggle" type="button" data-password-toggle="register-password" aria-label="Show password">Show</button>
+                    </div>
+                    <div class="strength-track" aria-hidden="true"><span id="strength-meter"></span></div>
+                    <p class="strength-copy" id="password-strength-text">Password strength <span id="strength-label">Not set</span></p>
+                    <span class="field-error" id="register-password-error">{% for error in form.password1.errors %}{{ error }}{% endfor %}{% for error in form.password2.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="confirm-password">Confirm password</label>
+                    <div class="password-field">
+                        <input id="confirm-password" name="password2" type="password" autocomplete="new-password" placeholder="Enter your password again" required aria-invalid="{% if form.password2.errors %}true{% else %}false{% endif %}" aria-describedby="confirm-password-error">
+                        <button class="password-toggle" type="button" data-password-toggle="confirm-password" aria-label="Show password">Show</button>
+                    </div>
+                    <span class="field-error" id="confirm-password-error">{% for error in form.password2.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <button class="primary-button auth-submit" type="submit">Create account</button>
+            </form>
+
+            <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+            <p class="auth-note"><span class="note-dot" aria-hidden="true"></span> Your personal cloud starts here</p>
+        </section>
+
+        <aside class="auth-aside" aria-label="About SYNK">
+            <div class="aside-decoration" aria-hidden="true">
+                <div class="decor-card decor-card-back"></div>
+                <div class="decor-card decor-card-front">
+                    <span class="decor-folder"></span>
+                    <span class="decor-line decor-line-long"></span>
+                    <span class="decor-line"></span>
+                    <span class="decor-lock">✓</span>
+                </div>
+            </div>
+            <div class="aside-copy">
+                <p class="aside-eyebrow">A LITTLE MORE PEACE OF MIND</p>
+                <h2>Your files have a place.</h2>
+                <p>Bring documents, photos, and important things into one simple personal space.</p>
+            </div>
+            <span class="aside-footer">SYNK · Personal cloud storage</span>
+        </aside>
+    </main>
+    <script src="{% static 'js/auth-ui.js' %}" defer></script>
+</body>
+</html>

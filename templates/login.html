@@ -1,0 +1,89 @@
+{% load static %}
+<!-- Tahap 2: halaman Login dan form autentikasi Django. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8fa">
+    <title>Sign in · SYNK</title>
+    <script src="{% static 'js/theme.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="auth-page">
+    <main class="auth-layout">
+        <section class="auth-panel" aria-labelledby="login-title">
+            <a class="brand auth-brand" href="/" aria-label="SYNK sign in">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32"><path d="M9 10.5h14M9 16h14M9 21.5h9"/><path d="M6.5 5.5h19a2 2 0 0 1 2 2v17a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2v-17a2 2 0 0 1 2-2Z"/></svg>
+                </span>
+                <span class="brand-copy">
+                    <span class="brand-name">SYNK</span>
+                    <span class="brand-caption">Personal cloud</span>
+                </span>
+            </a>
+
+            <div class="auth-heading">
+                <span class="auth-kicker">YOUR SPACE, IN SYNC</span>
+                <h1 id="login-title">Welcome back</h1>
+                <p>Sign in to access your personal files.</p>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="form-message" id="login-message" role="alert" aria-live="polite">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% else %}
+            <div class="form-message" id="login-message" role="alert" aria-live="polite" hidden></div>
+            {% endif %}
+
+            <form class="auth-form" id="login-form" method="post" novalidate>
+                {% csrf_token %}
+                <div class="field-group">
+                    <label for="login-identity">Username or email</label>
+                    <input id="login-identity" name="username" type="text" autocomplete="username" placeholder="Enter your username or email" value="{{ form.username.value|default_if_none:'' }}" required aria-invalid="{% if form.username.errors %}true{% else %}false{% endif %}" aria-describedby="login-identity-error">
+                    <span class="field-error" id="login-identity-error">{% for error in form.username.errors %}{{ error }}{% endfor %}</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="login-password">Password</label>
+                    <div class="password-field">
+                        <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required aria-describedby="login-password-error">
+                        <button class="password-toggle" type="button" data-password-toggle="login-password" aria-label="Show password">Show</button>
+                    </div>
+                    <span class="field-error" id="login-password-error"></span>
+                </div>
+
+                <label class="check-row" for="remember-me">
+                    <input id="remember-me" name="remember" type="checkbox">
+                    <span>Remember me</span>
+                </label>
+
+                <button class="primary-button auth-submit" type="submit">Sign in</button>
+            </form>
+
+            <p class="auth-switch">New to SYNK? <a href="{% url 'register' %}">Create an account</a></p>
+            <p class="auth-note"><span class="note-dot" aria-hidden="true"></span> A private space for your personal files</p>
+        </section>
+
+        <aside class="auth-aside" aria-label="About SYNK">
+            <div class="aside-decoration" aria-hidden="true">
+                <div class="decor-card decor-card-back"></div>
+                <div class="decor-card decor-card-front">
+                    <span class="decor-folder"></span>
+                    <span class="decor-line decor-line-long"></span>
+                    <span class="decor-line"></span>
+                    <span class="decor-lock">✓</span>
+                </div>
+            </div>
+            <div class="aside-copy">
+                <p class="aside-eyebrow">YOUR FILES, IN ONE PLACE</p>
+                <h2>Room for what matters.</h2>
+                <p>Keep your personal documents and memories together in a calm, organized space.</p>
+            </div>
+            <span class="aside-footer">SYNK · Personal cloud storage</span>
+        </aside>
+    </main>
+    <script src="{% static 'js/auth-ui.js' %}" defer></script>
+</body>
+</html>

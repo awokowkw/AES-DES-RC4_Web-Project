@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Security · SYNK{% endblock %}
+{% block page_title %}Security{% endblock %}
+
+{% block content %}
+<div class="stage-seven-page">
+    <header class="stage-seven-heading">
+        <div>
+            <p class="dashboard-kicker">YOUR FILES</p>
+            <h2>Security overview</h2>
+            <p>A clear view of file status and the latest comparison results.</p>
+        </div>
+        <span class="protected-badge"><span aria-hidden="true">✓</span> Protected</span>
+    </header>
+
+    <section class="dashboard-card comparison-card" aria-labelledby="comparison-heading">
+        <div class="section-heading-row">
+            <div>
+                <p class="card-eyebrow">FILE TEST RESULTS</p>
+                <h3 id="comparison-heading">Algorithm comparison</h3>
+            </div>
+            <span class="preview-data-badge">Admin only</span>
+        </div>
+        <p class="comparison-caption">
+            {% if user.is_staff %}
+                Encryption and decryption time and size for AES, RC4 and DES, measured on real uploads and downloads.
+            {% else %}
+                Detailed results are available to administrators.
+            {% endif %}
+        </p>
+        <div class="recent-table-wrap">
+            <table class="stage-seven-table comparison-table">
+                <thead>
+                    <tr>
+                        <th scope="col">File</th>
+                        <th scope="col">Algorithm</th>
+                        <th scope="col">Encryption time</th>
+                        <th scope="col">Decryption time</th>
+                        <th scope="col">Original size</th>
+                        <th scope="col">Encrypted size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in comparison_results %}
+                    <tr>
+                        <td class="table-file-name">{{ result.file }}</td>
+                        <td><span class="algorithm-chip">{{ result.algorithm }}</span></td>
+                        <td>{{ result.encryption_time }}</td>
+                        <td>{{ result.decryption_time }}</td>
+                        <td>{{ result.original_size }}</td>
+                        <td>{{ result.encrypted_size }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="table-empty-state" colspan="6">
+                            {% if user.is_staff %}
+                                No comparison results yet. Upload or download a file to generate results.
+                            {% else %}
+                                Detailed results are available to administrators.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
