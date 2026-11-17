@@ -13,4 +13,4 @@ class UserKey(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vault_key')
     kek_salt = models.BinaryField()
     wrapped_key = models.BinaryField()
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
