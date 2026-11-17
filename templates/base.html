@@ -1,6 +1,4 @@
-{% load static %}
-<!-- Tahap 1: shared shell, topbar, sidebar, dan kerangka halaman. -->
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -44,6 +42,22 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.25c0 4.3-2.85 7.5-7 9.25-4.15-1.75-7-4.95-7-9.25V6Z"/><path d="m9 12 2 2 4-4"/></svg>
                     <span>Security</span>
                 </a>
+            
+                <p class="nav-label">Sharing</p>
+                <a class="topbar-link {% if active_page == 'sharing' %}is-current{% endif %}" href="{% url 'sharing_incoming' %}" {% if active_page == 'sharing' %}aria-current="page"{% endif %}>Sharing{% if pending_incoming %}<span class="topbar-badge">{{ pending_incoming }}</span>{% endif %}</a>
+                <a class="nav-item {% if active_nav == 'sharing_incoming' %}is-active{% endif %}" href="{% url 'sharing_incoming' %}" {% if active_nav == 'sharing_incoming' %}aria-current="page"{% endif %}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h10M10 8l4 4-4 4"/><path d="M18 5v14"/></svg>
+                    <span>Permintaan masuk</span>
+                    {% if pending_incoming %}<span class="nav-badge" aria-label="{{ pending_incoming }} permintaan baru">{{ pending_incoming }}</span>{% endif %}
+                </a>
+                <a class="nav-item {% if active_nav == 'sharing_request' %}is-active{% endif %}" href="{% url 'sharing_request' %}" {% if active_nav == 'sharing_request' %}aria-current="page"{% endif %}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>
+                    <span>Minta akses baru</span>
+                </a>
+                <a class="nav-item {% if active_nav == 'sharing_sent' %}is-active{% endif %}" href="{% url 'sharing_sent' %}" {% if active_nav == 'sharing_sent' %}aria-current="page"{% endif %}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="m4 7 8 6 8-6"/></svg>
+                    <span>Permintaan saya</span>
+                </a>
             </nav>
 
             <div class="sidebar-bottom">
@@ -82,6 +96,7 @@
                     <a class="topbar-link {% if active_page == 'home' %}is-current{% endif %}" href="{% url 'home' %}" {% if active_page == 'home' %}aria-current="page"{% endif %}>Home</a>
                     <a class="topbar-link {% if active_page == 'profile' %}is-current{% endif %}" href="{% url 'profile' %}" {% if active_page == 'profile' %}aria-current="page"{% endif %}>Profile</a>
                     <a class="topbar-link {% if active_page == 'settings' %}is-current{% endif %}" href="{% url 'settings' %}" {% if active_page == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+                    <a class="topbar-link {% if active_page == 'sharing' %}is-current{% endif %}" href="{% url 'sharing_incoming' %}" {% if active_page == 'sharing' %}aria-current="page"{% endif %}>Sharing</a>
                     <form method="post" action="{% url 'logout' %}" style="display:inline">
                         {% csrf_token %}
                         <button class="topbar-link" type="submit" style="background:none;border:0;cursor:pointer">Logout</button>

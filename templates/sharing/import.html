@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Impor Kunci · SYNK{% endblock %}
+{% block page_title %}Impor Kunci{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Impor kunci dari {{ req.owner.username }}</h2>
+  <p>Tempel kode yang kamu terima dari {{ req.owner.username }}.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <textarea name="token" rows="6" cols="60" required
+                placeholder="Tempel kode di sini"></textarea>
+    </p>
+    <button type="submit">Impor</button>
+  </form>
+
+  <p><a href="{% url 'sharing_sent' %}">Kembali ke permintaan saya</a></p>
+</section>
+{% endblock %}

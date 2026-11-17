@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Minta Akses · SYNK{% endblock %}
+{% block page_title %}Minta Akses{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Minta akses data user lain</h2>
+  <p>Masukkan username pemilik data. Setelah pemilik menyetujui, kamu akan menerima kode kunci untuk diimpor.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <label for="username">Username pemilik data</label><br>
+      <input type="text" id="username" name="username" required>
+    </p>
+    <p>
+      <label for="message">Pesan (opsional)</label><br>
+      <textarea id="message" name="message" rows="3" cols="40"
+                placeholder="Contoh: butuh berkas untuk verifikasi pendaftaran"></textarea>
+    </p>
+    <button type="submit">Kirim permintaan</button>
+  </form>
+
+  <p><a href="{% url 'sharing_sent' %}">Lihat permintaan yang saya kirim</a></p>
+</section>
+{% endblock %}

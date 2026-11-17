@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Setujui Permintaan · SYNK{% endblock %}
+{% block page_title %}Setujui Permintaan{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Setujui permintaan dari {{ req.requester.username }}</h2>
+  <p>Centang data dan file yang boleh dilihat. Yang tidak dicentang tidak akan ikut dibagikan.</p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <h3>Data pribadi</h3>
+    {% for d in data %}
+      <p>
+        <label>
+          <input type="checkbox" name="data" value="{{ d.pk }}">
+          {{ d.field }} ({{ d.category }})
+        </label>
+      </p>
+    {% empty %}
+      <p>Tidak ada data pribadi.</p>
+    {% endfor %}
+
+    <h3>File</h3>
+    {% for f in files %}
+      <p>
+        <label>
+          <input type="checkbox" name="files" value="{{ f.id }}">
+          {{ f.name }} ({{ f.kind }}, {{ f.size|filesizeformat }})
+        </label>
+      </p>
+    {% empty %}
+      <p>Tidak ada file.</p>
+    {% endfor %}
+
+    <button type="submit">Setujui dan buat kode kunci</button>
+    <a href="{% url 'sharing_incoming' %}">Batal</a>
+  </form>
+</section>
+{% endblock %}

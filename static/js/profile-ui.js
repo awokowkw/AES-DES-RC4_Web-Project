@@ -1,7 +1,6 @@
 // Profil: foto profil = preview lokal; ID card = unggah sungguhan ke server.
 (function () {
     const photoInput = document.getElementById("profile-photo-input");
-    const identityInput = document.getElementById("identity-card-input");
     if (!photoInput || !identityInput) return;
 
     const photoImage = document.getElementById("profile-photo-image");
@@ -38,9 +37,7 @@
         removePhotoButton.disabled = true;
     });
 
-    document.getElementById("replace-identity-card").addEventListener("click", function () {
-        identityInput.click();
-    });
+    
 
     identityInput.addEventListener("change", function () {
         if (!identityInput.files.length) return;

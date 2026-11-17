@@ -8,6 +8,9 @@ from vault.forms import SYNKAuthenticationForm, SYNKUserCreationForm
 
 from . import keystore
 
+from accounts import keystore
+from sharing.services import ensure_keypair
+
 
 def register(request):
     if request.user.is_authenticated:
@@ -19,6 +22,7 @@ def register(request):
             user = form.save()
             login(request, user)
             keystore.unlock(request, user, form.cleaned_data['password1'])
+            ensure_keypair(user, keystore.get_key(request.session.session_key))
             # simpan nama lengkap juga di profil terenkripsi
             key = keystore.get_key(request.session.session_key)
             if key is not None:

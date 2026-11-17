@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Data Diterima · SYNK{% endblock %}
+{% block page_title %}Data Diterima{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Data yang dibagikan oleh {{ req.owner.username }}</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nama / label</th>
+        <th>Jenis</th>
+        <th>Ukuran</th>
+        <th>Buka dengan</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in items %}
+      <tr>
+        <td>{{ i.label }}</td>
+        <td>{{ i.kind }}</td>
+        <td>{{ i.size|filesizeformat }}</td>
+        <td>
+          <a href="{% url 'sharing_read' i.id 'aes' %}">AES</a> |
+          <a href="{% url 'sharing_read' i.id 'rc4' %}">RC4</a> |
+          <a href="{% url 'sharing_read' i.id 'des' %}">DES</a>
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">Pemilik belum membagikan data apa pun.</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <p><a href="{% url 'sharing_sent' %}">Kembali ke permintaan saya</a></p>
+</section>
+{% endblock %}

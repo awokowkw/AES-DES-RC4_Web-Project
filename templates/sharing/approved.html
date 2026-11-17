@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Kode Kunci · SYNK{% endblock %}
+{% block page_title %}Kode Kunci{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Kode kunci untuk {{ req.requester.username }}</h2>
+
+  <p><strong>Kirim kode ini lewat WA atau email, bukan lewat sistem ini.</strong>
+     Kode hanya bisa dibuka oleh {{ req.requester.username }} karena dienkripsi dengan kunci publiknya.</p>
+
+  <textarea id="token" rows="6" cols="60" readonly>{{ token }}</textarea>
+  <p>
+    <button type="button"
+            onclick="navigator.clipboard.writeText(document.getElementById('token').value); this.textContent='Tersalin';">
+      Salin kode
+    </button>
+  </p>
+
+  <p><a href="{% url 'sharing_incoming' %}">Kembali ke permintaan masuk</a></p>
+</section>
+{% endblock %}

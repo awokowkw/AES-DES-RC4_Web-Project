@@ -286,3 +286,4 @@ def folder_download(request, pk):
     resp['X-Content-Type-Options'] = 'nosniff'
     resp['Cache-Control'] = 'private, no-store'
     return resp
+
