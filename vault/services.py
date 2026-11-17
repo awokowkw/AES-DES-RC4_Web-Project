@@ -263,7 +263,13 @@ FILE_KINDS = {  # ekstensi: (kelas ikon FE, label)
     '.gif': ('image', 'Image'), '.webp': ('image', 'Image'),
     '.mp4': ('video', 'Video'), '.mov': ('video', 'Video'),
     '.webm': ('video', 'Video'), '.mkv': ('video', 'Video'),
+    '.txt': ('document', 'Plain Text'),
+    '.md': ('document', 'Markdown Document'),
+    '.csv': ('spreadsheet', 'CSV Spreadsheet'),
+    '.json': ('document', 'JSON File'),
+    '.log': ('document', 'Log File'),
 }
+
 FOLDER_KIND = {'Dokumen': 'folder-documents', 'Gambar': 'folder-photos',
                'Video': 'folder-videos'}
 
