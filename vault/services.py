@@ -95,7 +95,12 @@ def store_upload(user, data_key, uploaded, kind, folder=None):
         raise UploadError('folder tidak ditemukan')
 
     paths = _new_paths()
-    os.makedirs(os.path.dirname(default_storage.path(paths['aes'])), exist_ok=True)
+    # Local filesystem: pre-create the vault/ subdirectory.
+    # S3/remote backends don't support .path() so we skip makedirs for them.
+    try:
+        os.makedirs(os.path.dirname(default_storage.path(paths['aes'])), exist_ok=True)
+    except NotImplementedError:
+        pass  # Remote storage (S3 / Supabase) manages directories itself
     timings = {}
     try:
         with ExitStack() as stack:
