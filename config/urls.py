@@ -7,5 +7,6 @@ urlpatterns = [
     path('', RedirectView.as_view(pattern_name='dashboard', permanent=False)),
     path('', include('accounts.urls')),
     path('', include('vault.urls')),
-    path("sharing/", include("sharing.urls"))
+    path("sharing/", include("sharing.urls")),
+    path("signatures/", include("signatures.urls"))
 ]

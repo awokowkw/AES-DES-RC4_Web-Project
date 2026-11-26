@@ -1,0 +1,136 @@
+<div id="synk-sig-fab-wrap" style="position:fixed;bottom:24px;right:24px;z-index:2147483640;pointer-events:auto;">
+    <button type="button" id="synk-open-sig-btn" onclick="window.synkOpenSigModal()" style="display:inline-flex;align-items:center;gap:8px;background:#1f4e3d;color:#ffffff;border:none;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.22);cursor:pointer;pointer-events:auto;">
+        <span>🛡️</span> Digital Signature
+    </button>
+</div>
+
+<div id="synk-sig-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(2px);z-index:2147483645;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#ffffff;color:#1e293b;border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 24px 48px rgba(0,0,0,0.25);position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0;font-size:18px;font-weight:700;">Digital Signature & Key Pair</h3>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Verifikasi keaslian PDF & kelola sertifikat X.509 owner</p>
+            </div>
+            <button type="button" onclick="window.synkCloseSigModal()" style="background:transparent;border:none;font-size:20px;color:#64748b;cursor:pointer;">✕</button>
+        </div>
+
+        <div>
+            <h4 style="margin:0 0 10px;font-size:14px;font-weight:600;">1. Verify PDF Digital Signature</h4>
+            <form id="synk-verify-pdf-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" id="synk-verify-file" name="pdf_file" accept=".pdf" required style="display:block;width:100%;padding:8px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
+                <button type="submit" style="width:100%;background:#1f4e3d;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;">Verify PDF</button>
+            </form>
+            <div id="synk-verify-result" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:13px;line-height:1.4;"></div>
+        </div>
+
+        <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0;">
+
+        <div>
+            <h4 style="margin:0 0 10px;font-size:14px;font-weight:600;">2. My Signing Key Pair & Certificate</h4>
+            <div id="synk-key-status-box" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:10px;color:#334155;">Memuat status kunci...</div>
+            <div style="display:flex;gap:8px;">
+                <button type="button" id="synk-gen-key-btn" onclick="window.synkGenerateKey()" style="flex:1;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;background:#0f172a;color:#fff;border:none;">
+                    Generate Key Pair
+                </button>
+                <a href="{% url 'download_my_certificate' %}" style="flex:1;text-align:center;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none;background:#fff;color:#1f4e3d;border:1px solid #1f4e3d;">
+                    Download .CRT (Adobe Reader)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const fabWrap = document.getElementById('synk-sig-fab-wrap');
+    const overlay = document.getElementById('synk-sig-overlay');
+    if (fabWrap && fabWrap.parentElement !== document.body) document.body.appendChild(fabWrap);
+    if (overlay && overlay.parentElement !== document.body) document.body.appendChild(overlay);
+
+    function getCsrf() {
+        const el = document.querySelector('#synk-verify-pdf-form [name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
+
+    window.synkLoadKeyStatus = async function() {
+        const box = document.getElementById('synk-key-status-box');
+        const genBtn = document.getElementById('synk-gen-key-btn');
+        try {
+            const res = await fetch("{% url 'signature_key_status' %}");
+            const data = await res.json();
+            if (data.has_key) {
+                box.innerHTML = '✅ <strong>Aktif</strong> (Dibuat: ' + data.created_at + ')<br><code>' + data.public_key_preview + '</code>';
+                genBtn.textContent = 'Key Pair Tersedia';
+                genBtn.disabled = true;
+                genBtn.style.opacity = '0.6';
+            } else {
+                box.innerHTML = '⚠️ <strong>Belum ada Key Pair.</strong> Klik tombol di bawah atau unggah PDF untuk membuat otomatis.';
+                genBtn.disabled = false;
+                genBtn.style.opacity = '1';
+            }
+        } catch (e) {
+            box.textContent = 'Gagal memuat status kunci.';
+        }
+    };
+
+    window.synkOpenSigModal = async function() {
+        document.getElementById('synk-sig-overlay').style.display = 'flex';
+        await window.synkLoadKeyStatus();
+    };
+
+    window.synkCloseSigModal = function() {
+        document.getElementById('synk-sig-overlay').style.display = 'none';
+    };
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) window.synkCloseSigModal();
+    });
+
+    window.synkGenerateKey = async function() {
+        const res = await fetch("{% url 'signature_key_generate' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrf() }
+        });
+        const data = await res.json();
+        if (data.has_key) await window.synkLoadKeyStatus();
+    };
+
+    document.getElementById('synk-verify-pdf-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const resBox = document.getElementById('synk-verify-result');
+        const formData = new FormData(this);
+        resBox.style.display = 'block';
+        resBox.style.background = '#f8fafc';
+        resBox.style.border = '1px solid #cbd5e1';
+        resBox.style.color = '#334155';
+        resBox.textContent = 'Memeriksa tanda tangan digital...';
+
+        try {
+            const res = await fetch("{% url 'verify_pdf_endpoint' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrf() },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.valid) {
+                resBox.style.background = '#ecfdf5';
+                resBox.style.border = '1px solid #10b981';
+                resBox.style.color = '#065f46';
+            } else {
+                resBox.style.background = '#fef2f2';
+                resBox.style.border = '1px solid #ef4444';
+                resBox.style.color = '#991b1b';
+            }
+            resBox.innerHTML = '<strong>' + (data.valid ? 'TERVERIFIKASI' : 'TIDAK VALID') + '</strong><br>' +
+                (data.signer ? 'Penanda tangan: <strong>' + data.signer + '</strong><br>' : '') +
+                data.message;
+        } catch (err) {
+            resBox.style.background = '#fef2f2';
+            resBox.style.border = '1px solid #ef4444';
+            resBox.style.color = '#991b1b';
+            resBox.innerHTML = '<strong>GAGAL MEMERIKSA</strong><br>' + err.message;
+        }
+    });
+})();
+</script>

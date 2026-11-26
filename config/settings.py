@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'vault',
-    'sharing'
+    'sharing',
+    'signatures'
 ]
 
 MIDDLEWARE = [

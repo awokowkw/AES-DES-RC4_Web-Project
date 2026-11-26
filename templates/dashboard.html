@@ -125,6 +125,10 @@
                 {% endfor %}
             </ol>
         </section>
+
+        {% if user.is_authenticated %}
+            {% include "signatures/verify_modal.html" %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}

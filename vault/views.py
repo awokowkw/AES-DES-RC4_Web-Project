@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_POST
 from django.db.models import Count
-
+from signatures.pdf_signer import sign_uploaded_pdf_if_needed
 from accounts.decorators import vault_unlocked
 
 from . import crypto, services
@@ -130,6 +130,7 @@ def file_upload(request):
             kind = services.guess_kind(up.name)
             if kind is None:
                 raise services.UploadError('tipe file tidak didukung')
+            up = sign_uploaded_pdf_if_needed(request.user, request.data_key, up)
             services.store_upload(request.user, request.data_key, up, kind, folder)
             done += 1
         except services.UploadError as e:
