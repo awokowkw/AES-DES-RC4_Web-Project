@@ -1,21 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Impor Kunci · SYNK{% endblock %}
-{% block page_title %}Impor Kunci{% endblock %}
+{% block title %}Impor Kode Akses · SYNK{% endblock %}
+{% block page_title %}Impor Kode Akses{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Impor kunci dari {{ req.owner.username }}</h2>
-  <p>Tempel kode yang kamu terima dari {{ req.owner.username }}.</p>
+<div class="page">
+  <p class="page-subtitle">
+    Tempel kode akses yang kamu terima dari <strong>{{ req.owner.username }}</strong>
+    untuk membuka item yang dibagikan.
+  </p>
 
-  <form method="post">
+  <form method="post" class="card">
     {% csrf_token %}
-    <p>
-      <textarea name="token" rows="6" cols="60" required
-                placeholder="Tempel kode di sini"></textarea>
-    </p>
-    <button type="submit">Impor</button>
+    <div class="field">
+      <label for="share-token">Kode akses</label>
+      <textarea class="textarea token-box" id="share-token" name="token" rows="6"
+                required autocomplete="off"
+                {% if error %}aria-invalid="true"{% endif %}
+                aria-describedby="token-hint{% if error %} token-error{% endif %}">{{ token }}</textarea>
+      <p class="hint" id="token-hint">Pastikan kode berasal dari pemilik dan tidak berubah saat ditempel.</p>
+      {% if error %}<p class="error-text" id="token-error" role="alert">{{ error }}</p>{% endif %}
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Verifikasi dan impor</button>
+      <a class="btn btn-secondary" href="{% url 'sharing_sent' %}">Batal</a>
+    </div>
   </form>
-
-  <p><a href="{% url 'sharing_sent' %}">Kembali ke permintaan saya</a></p>
-</section>
+</div>
 {% endblock %}

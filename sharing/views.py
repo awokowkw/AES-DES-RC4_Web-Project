@@ -1,5 +1,5 @@
 import mimetypes
-from uuid import uuid4
+import binascii
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -31,34 +31,54 @@ def request_access(request):
     dk = get_data_key(request)
     if dk is None:
         return redirect("login")
+    context = {
+        "active_nav": "sharing_request",
+        "active_page": "sharing",
+        "owner_username": request.GET.get("owner", ""),
+        "message": "",
+    }
     if request.method == "POST":
-        owner = User.objects.filter(username=request.POST.get("username", "").strip()).first()
-        if owner is None or owner == request.user:
-            messages.error(request, "User tidak ditemukan.")
-            return redirect("sharing_request")
-        if AccessRequest.objects.filter(requester=request.user, owner=owner,
-                                        status__in=[S.PENDING, S.APPROVED]).exists():
-            messages.error(request, "Sudah ada permintaan aktif ke user ini.")
-            return redirect("sharing_request")
+        username = request.POST.get("owner_username", "").strip()
+        context["owner_username"] = request.POST.get("owner_username", "")
+        context["message"] = request.POST.get("message", "")
+        owner = User.objects.filter(username=username).first() if username else None
+        if not username:
+            context["error"] = "Masukkan username pemilik data."
+        elif owner is None:
+            context["error"] = "Username tidak ditemukan."
+        elif owner == request.user:
+            context["error"] = "Kamu tidak dapat meminta akses ke akun sendiri."
+        elif AccessRequest.objects.filter(
+                requester=request.user, owner=owner,
+                status__in=[S.PENDING, S.APPROVED]).exists():
+            context["error"] = "Masih ada permintaan aktif ke pengguna ini."
+
+        if "error" in context:
+            return render(request, "sharing/request.html", context)
+
         ensure_keypair(request.user, dk)      # B harus punya RSA publik sebelum disetujui
         AccessRequest.objects.create(requester=request.user, owner=owner,
                                      message=request.POST.get("message", ""))
         messages.success(request, "Permintaan terkirim.")
         return redirect("sharing_sent")
-    return render(request, "sharing/request.html")
+    return render(request, "sharing/request.html", context)
 
 
 @login_required
 def sent(request):
-    reqs = AccessRequest.objects.filter(requester=request.user).select_related("owner", "sharedkey")
-    return render(request, "sharing/sent.html", {"reqs": reqs})
+    reqs = AccessRequest.objects.filter(requester=request.user).select_related(
+        "owner", "sharedkey").order_by("-created")
+    return render(request, "sharing/sent.html", {
+        "requests": reqs, "active_nav": "sharing_sent", "active_page": "sharing"})
 
 
 # ---------------------------------------------------------------- A: menyetujui
 @login_required
 def incoming(request):
-    reqs = AccessRequest.objects.filter(owner=request.user).select_related("requester")
-    return render(request, "sharing/incoming.html", {"reqs": reqs})
+    reqs = AccessRequest.objects.filter(owner=request.user).select_related(
+        "requester").order_by("-created")
+    return render(request, "sharing/incoming.html", {
+        "reqs": reqs, "active_nav": "sharing_incoming", "active_page": "sharing"})
 
 
 @login_required
@@ -68,17 +88,25 @@ def approve(request, pk):
     if odk is None:
         return redirect("login")
 
-    if request.method != "POST":
-        files = [{"id": f.id, "kind": f.kind, "size": f.size,
-                  "name": crypto.open_one(odk, "aes", f.name_aes).decode()}
-                 for f in StoredFile.objects.filter(owner=request.user)]
-        return render(request, "sharing/approve.html", {
-            "req": req, "data": PrivateData.objects.filter(user=request.user), "files": files})
-
-    data_ids, file_ids = request.POST.getlist("data"), request.POST.getlist("files")
-    if not (data_ids or file_ids):
-        messages.error(request, "Pilih minimal satu data/file.")
-        return redirect("sharing_approve", pk=pk)
+    context = {
+        "req": req,
+        "active_nav": "sharing_incoming", "active_page": "sharing",
+    }
+    data_ids = request.POST.getlist("data") if request.method == "POST" else []
+    file_ids = request.POST.getlist("files") if request.method == "POST" else []
+    if request.method != "POST" or not (data_ids or file_ids):
+        context.update({
+            "data": PrivateData.objects.filter(user=request.user).order_by("field"),
+            "files": [{"id": f.id, "kind": f.kind, "size": f.size,
+                       "name": crypto.open_one(odk, "aes", f.name_aes).decode()}
+                      for f in StoredFile.objects.filter(owner=request.user)],
+        })
+        if request.method == "POST":
+            if context["data"].exists() or context["files"]:
+                context["error"] = "Pilih setidaknya satu data atau file untuk dibagikan."
+            else:
+                context["error"] = "Tidak ada data atau file yang tersedia untuk dibagikan."
+        return render(request, "sharing/approve.html", context)
 
     requester_kp = get_object_or_404(UserKeyPair, user=req.requester)
     owner_kp = ensure_keypair(request.user, odk)
@@ -128,13 +156,17 @@ def approve(request, pk):
                     if p:
                         default_storage.delete(p)
         raise
-    return render(request, "sharing/approved.html", {"req": req, "token": token})
+    return render(request, "sharing/approved.html", {
+        "req": req, "token": token,
+        "active_nav": "sharing_incoming", "active_page": "sharing"})
 
 
 @login_required
 def show_token(request, pk):                 # A bisa melihat kode lagi kalau pesan WA hilang
     req = get_object_or_404(AccessRequest, pk=pk, owner=request.user, status=S.APPROVED)
-    return render(request, "sharing/approved.html", {"req": req, "token": req.sharedkey.token})
+    return render(request, "sharing/approved.html", {
+        "req": req, "token": req.sharedkey.token,
+        "active_nav": "sharing_incoming", "active_page": "sharing"})
 
 
 @login_required
@@ -143,6 +175,7 @@ def reject(request, pk):
         req = get_object_or_404(AccessRequest, pk=pk, owner=request.user, status=S.PENDING)
         req.status, req.decided_at = S.REJECTED, timezone.now()
         req.save()
+        messages.success(request, "Permintaan ditolak.")
     return redirect("sharing_incoming")
 
 
@@ -177,16 +210,21 @@ def import_key(request, pk):
                                   aad=f"rsa-priv:{request.user.id}".encode())
             owner_pub = UserKeyPair.objects.get(user=req.owner).public_key_pem
             K = keys.open_token(request.POST["token"], my_priv, owner_pub, req.id)
-        except Exception as e:
-            messages.error(request, f"Kode kunci tidak valid: {e}")
-            return redirect("sharing_import", pk=pk)
+        except (ValueError, KeyError, TypeError, binascii.Error,
+                UserKeyPair.DoesNotExist):
+            return render(request, "sharing/import.html", {
+                "req": req, "error": "Kode kunci tidak valid atau tidak cocok dengan permintaan ini.",
+                "token": request.POST.get("token", ""),
+                "active_nav": "sharing_sent", "active_page": "sharing",
+            })
         sk = req.sharedkey
         sk.key_wrapped_requester = keys.wrap(dk, K, aad=f"share-req:{req.id}".encode())
         sk.imported_at = timezone.now()
         sk.save()
         messages.success(request, "Kunci berhasil diimpor.")
         return redirect("sharing_received", pk=pk)
-    return render(request, "sharing/import.html", {"req": req})
+    return render(request, "sharing/import.html", {
+        "req": req, "active_nav": "sharing_sent", "active_page": "sharing"})
 
 
 # ---------------------------------------------------------------- B: membuka data
@@ -225,11 +263,14 @@ def received(request, pk):
         return redirect("login")
     K = _open_share_key(request, req.sharedkey)
     if K is None:
+        messages.info(request, "Impor kode kunci terlebih dahulu untuk membuka data.")
         return redirect("sharing_import", pk=pk)
     items = [{"id": i.id, "kind": i.kind, "size": i.size,
               "label": crypto.open_one(K, "aes", i.label_aes).decode()}
              for i in req.sharedkey.items.all()]
-    return render(request, "sharing/received.html", {"req": req, "items": items})
+    return render(request, "sharing/received.html", {
+        "req": req, "items": items,
+        "active_nav": "sharing_sent", "active_page": "sharing"})
 
 
 @login_required

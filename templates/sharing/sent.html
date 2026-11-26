@@ -3,44 +3,63 @@
 {% block page_title %}Permintaan Saya{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Permintaan yang saya kirim</h2>
+<div class="page">
+  <div class="page-intro-row">
+    <p class="page-subtitle">Pantau status dan lanjutkan permintaan akses yang kamu kirim.</p>
+    <a href="{% url 'sharing_request' %}" class="btn btn-primary">Minta akses baru</a>
+  </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Pemilik</th>
-        <th>Status</th>
-        <th>Dikirim</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for r in reqs %}
-      <tr>
-        <td>{{ r.owner.username }}</td>
-        <td>{{ r.get_status_display }}</td>
-        <td>{{ r.created|date:"d M Y H:i" }}</td>
-        <td>
-          {% if r.status == "approved" %}
-            {% if r.sharedkey.imported_at %}
-              <a href="{% url 'sharing_received' r.id %}">Lihat data</a>
-            {% else %}
-              <a href="{% url 'sharing_import' r.id %}">Impor kunci</a>
-            {% endif %}
-          {% else %}
-            -
-          {% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4">Belum ada permintaan.</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-
-  <p><a href="{% url 'sharing_request' %}">Minta akses baru</a></p>
-</section>
+  <div class="card card-flush">
+    {% if requests %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Pemilik</th>
+            <th scope="col">Status</th>
+            <th scope="col">Dikirim</th>
+            <th scope="col"><span class="visually-hidden">Aksi</span></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in requests %}
+          <tr>
+            <td><strong>{{ r.owner.username }}</strong></td>
+            <td>
+              {% if r.status == "pending" %}
+                <span class="badge badge-pending">Menunggu persetujuan</span>
+              {% elif r.status == "approved" %}
+                <span class="badge badge-approved">Disetujui</span>
+              {% elif r.status == "rejected" %}
+                <span class="badge badge-rejected">Ditolak</span>
+              {% else %}
+                <span class="badge badge-neutral">Akses dicabut</span>
+              {% endif %}
+            </td>
+            <td>{{ r.created|date:"d M Y, H:i" }}</td>
+            <td class="table-actions">
+              {% if r.status == "approved" %}
+                {% if r.sharedkey.imported_at %}
+                  <a class="btn btn-primary btn-sm" href="{% url 'sharing_received' r.pk %}">Buka data</a>
+                {% else %}
+                  <a class="btn btn-primary btn-sm" href="{% url 'sharing_import' r.pk %}">Impor kode</a>
+                {% endif %}
+              {% elif r.status == "rejected" or r.status == "revoked" %}
+                <a class="btn btn-secondary btn-sm" href="{% url 'sharing_request' %}?owner={{ r.owner.username|urlencode }}">Minta lagi</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-title">Belum ada permintaan</div>
+        <p>Mulai dengan meminta akses kepada pemilik data.</p>
+        <a href="{% url 'sharing_request' %}" class="btn btn-primary">Minta akses</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

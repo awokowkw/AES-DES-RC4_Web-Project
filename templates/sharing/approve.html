@@ -1,41 +1,59 @@
 {% extends "base.html" %}
-{% block title %}Setujui Permintaan · SYNK{% endblock %}
-{% block page_title %}Setujui Permintaan{% endblock %}
+{% block title %}Tinjau Permintaan · SYNK{% endblock %}
+{% block page_title %}Tinjau Permintaan{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Setujui permintaan dari {{ req.requester.username }}</h2>
-  <p>Centang data dan file yang boleh dilihat. Yang tidak dicentang tidak akan ikut dibagikan.</p>
+<div class="page">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="{% url 'sharing_incoming' %}">Permintaan masuk</a>
+    <span aria-hidden="true">/</span>
+    <span>Tinjau permintaan</span>
+  </nav>
+  <p class="page-subtitle">
+    <strong>{{ req.requester.username }}</strong> meminta akses. Pilih item yang boleh dibagikan;
+    item lain tetap privat.
+  </p>
 
-  <form method="post">
+  <form method="post" class="card">
     {% csrf_token %}
+    {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+    {% if data or files %}
+      <fieldset class="selection-group">
+        <legend>Data pribadi</legend>
+        {% for d in data %}
+          <label class="selection-item">
+            <input type="checkbox" name="data" value="{{ d.pk }}">
+            <span><strong>{{ d.field }}</strong><small>{{ d.category }}</small></span>
+          </label>
+        {% empty %}
+          <p class="hint">Tidak ada data pribadi yang tersedia untuk dibagikan.</p>
+        {% endfor %}
+      </fieldset>
 
-    <h3>Data pribadi</h3>
-    {% for d in data %}
-      <p>
-        <label>
-          <input type="checkbox" name="data" value="{{ d.pk }}">
-          {{ d.field }} ({{ d.category }})
-        </label>
-      </p>
-    {% empty %}
-      <p>Tidak ada data pribadi.</p>
-    {% endfor %}
+      <fieldset class="selection-group">
+        <legend>File</legend>
+        {% for f in files %}
+          <label class="selection-item">
+            <input type="checkbox" name="files" value="{{ f.id }}">
+            <span><strong>{{ f.name }}</strong><small>{{ f.kind }} · {{ f.size|filesizeformat }}</small></span>
+          </label>
+        {% empty %}
+          <p class="hint">Tidak ada file yang tersedia untuk dibagikan.</p>
+        {% endfor %}
+      </fieldset>
 
-    <h3>File</h3>
-    {% for f in files %}
-      <p>
-        <label>
-          <input type="checkbox" name="files" value="{{ f.id }}">
-          {{ f.name }} ({{ f.kind }}, {{ f.size|filesizeformat }})
-        </label>
-      </p>
-    {% empty %}
-      <p>Tidak ada file.</p>
-    {% endfor %}
-
-    <button type="submit">Setujui dan buat kode kunci</button>
-    <a href="{% url 'sharing_incoming' %}">Batal</a>
+      <p class="hint">Kamu bisa membatalkan tanpa membagikan apa pun.</p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Bagikan pilihan dan buat kode</button>
+        <a href="{% url 'sharing_incoming' %}" class="btn btn-secondary">Batal</a>
+      </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-title">Tidak ada item untuk dibagikan</div>
+        <p>Tambahkan data atau file terlebih dahulu, atau kembali ke daftar permintaan.</p>
+        <a href="{% url 'sharing_incoming' %}" class="btn btn-secondary">Kembali ke permintaan masuk</a>
+      </div>
+    {% endif %}
   </form>
-</section>
+</div>
 {% endblock %}
