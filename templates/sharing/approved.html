@@ -1,22 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Kode Kunci · SYNK{% endblock %}
-{% block page_title %}Kode Kunci{% endblock %}
+{% block title %}Kode Akses · SYNK{% endblock %}
+{% block page_title %}Kode Akses{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Kode kunci untuk {{ req.requester.username }}</h2>
+<div class="page">
+  <p class="page-subtitle">Akses sudah disetujui untuk <strong>{{ req.requester.username }}</strong>.</p>
 
-  <p><strong>Kirim kode ini lewat WA atau email, bukan lewat sistem ini.</strong>
-     Kode hanya bisa dibuka oleh {{ req.requester.username }} karena dienkripsi dengan kunci publiknya.</p>
+  <section class="card" aria-labelledby="share-code-heading">
+    <h2 class="section-title" id="share-code-heading">Kirim kode akses dengan aman</h2>
+    <p>
+      Kirim kode ini kepada {{ req.requester.username }} melalui kanal pribadi seperti WhatsApp
+      atau email. Jangan bagikan kepada orang lain. Kode hanya dapat dibuka oleh peminta yang dituju.
+    </p>
+    <label class="field-label" for="share-token">Kode akses</label>
+    <textarea class="textarea token-box" id="share-token" rows="6" readonly>{{ token }}</textarea>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="button" data-copy-target="share-token">Salin kode</button>
+      <a class="btn btn-secondary" href="{% url 'sharing_incoming' %}">Kembali ke permintaan masuk</a>
+    </div>
+    <p class="copy-status" role="status" aria-live="polite"></p>
+  </section>
+</div>
+{% endblock %}
 
-  <textarea id="token" rows="6" cols="60" readonly>{{ token }}</textarea>
-  <p>
-    <button type="button"
-            onclick="navigator.clipboard.writeText(document.getElementById('token').value); this.textContent='Tersalin';">
-      Salin kode
-    </button>
-  </p>
-
-  <p><a href="{% url 'sharing_incoming' %}">Kembali ke permintaan masuk</a></p>
-</section>
+{% block extra_scripts %}
+<script>
+  document.querySelectorAll("[data-copy-target]").forEach(function (button) {
+    button.addEventListener("click", async function () {
+      const field = document.getElementById(button.dataset.copyTarget);
+      const status = button.closest(".card").querySelector(".copy-status");
+      try {
+        await navigator.clipboard.writeText(field.value);
+        status.textContent = "Kode berhasil disalin.";
+      } catch (error) {
+        field.focus();
+        field.select();
+        status.textContent = "Salin kode yang sudah dipilih secara manual.";
+      }
+    });
+  });
+</script>
 {% endblock %}

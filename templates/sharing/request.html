@@ -3,24 +3,35 @@
 {% block page_title %}Minta Akses{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Minta akses data user lain</h2>
-  <p>Masukkan username pemilik data. Setelah pemilik menyetujui, kamu akan menerima kode kunci untuk diimpor.</p>
+<div class="page">
+  <p class="page-subtitle">
+    Masukkan username pemilik data. Pemilik akan memilih item yang dibagikan dan menyetujui permintaanmu.
+  </p>
 
-  <form method="post">
+  <form method="post" class="card">
     {% csrf_token %}
-    <p>
-      <label for="username">Username pemilik data</label><br>
-      <input type="text" id="username" name="username" required>
-    </p>
-    <p>
-      <label for="message">Pesan (opsional)</label><br>
-      <textarea id="message" name="message" rows="3" cols="40"
-                placeholder="Contoh: butuh berkas untuk verifikasi pendaftaran"></textarea>
-    </p>
-    <button type="submit">Kirim permintaan</button>
-  </form>
 
-  <p><a href="{% url 'sharing_sent' %}">Lihat permintaan yang saya kirim</a></p>
-</section>
+    <div class="field">
+      <label for="id_owner">Username pemilik data</label>
+      <input id="id_owner" name="owner_username" type="text"
+             class="input{% if error %} is-invalid{% endif %}"
+             placeholder="Contoh: test1" autocomplete="off" required autofocus
+             {% if error %}aria-invalid="true" aria-describedby="owner-error"{% endif %}
+             value="{{ owner_username }}">
+      {% if error %}<p class="error-text" id="owner-error" role="alert">{{ error }}</p>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_msg">Pesan <span class="optional">(opsional)</span></label>
+      <textarea id="id_msg" name="message" rows="3" class="textarea"
+                placeholder="Jelaskan mengapa kamu membutuhkan akses">{{ message }}</textarea>
+      <p class="hint">Pesan membantu pemilik memahami tujuan permintaanmu.</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Kirim permintaan</button>
+      <a href="{% url 'sharing_sent' %}" class="btn btn-secondary">Lihat permintaan saya</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

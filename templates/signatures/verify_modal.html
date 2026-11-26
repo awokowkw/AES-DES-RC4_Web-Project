@@ -33,10 +33,26 @@
                 <button type="button" id="synk-gen-key-btn" onclick="window.synkGenerateKey()" style="flex:1;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;background:#0f172a;color:#fff;border:none;">
                     Generate Key Pair
                 </button>
+                <button type="button" id="synk-regen-key-btn" onclick="window.synkRegenerateKey()" style="flex:1;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;background:#b45309;color:#fff;border:none;">
+                    Regenerate (Root CA)
+                </button>
                 <a href="{% url 'download_my_certificate' %}" style="flex:1;text-align:center;padding:8px 10px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none;background:#fff;color:#1f4e3d;border:1px solid #1f4e3d;">
-                    Download .CRT (Adobe Reader)
+                    Download .CRT
                 </a>
             </div>
+        </div>
+
+        <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0;">
+
+        <div>
+            <h4 style="margin:0 0 10px;font-size:14px;font-weight:600;">3. Root CA SYNK (Wajib untuk Verifikasi Otomatis)</h4>
+            <p style="margin:0 0 10px;font-size:12.5px;color:#64748b;line-height:1.5;">
+                Install <strong>satu kali</strong> Root CA ini ke <em>Trusted Root Certification Authorities</em> pada Edge/Adobe.
+                Setelah itu <strong>semua</strong> tanda tangan user SYNK langsung terverifikasi otomatis, tanpa install .crt satu per satu.
+            </p>
+            <a href="{% url 'download_root_ca' %}" style="display:block;text-align:center;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;background:#1f4e3d;color:#fff;">
+                ⬇ Download SYNK Root CA (.crt)
+            </a>
         </div>
     </div>
 </div>
@@ -89,6 +105,16 @@
 
     window.synkGenerateKey = async function() {
         const res = await fetch("{% url 'signature_key_generate' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrf() }
+        });
+        const data = await res.json();
+        if (data.has_key) await window.synkLoadKeyStatus();
+    };
+
+    window.synkRegenerateKey = async function() {
+        if (!confirm('Hapus key lama (self-signed) & buat cert baru dari Root CA SYNK? PDF yang sudah ditandatangani harus diunggah ulang.')) return;
+        const res = await fetch("{% url 'signature_key_regenerate' %}", {
             method: 'POST',
             headers: { 'X-CSRFToken': getCsrf() }
         });

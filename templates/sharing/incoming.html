@@ -3,49 +3,66 @@
 {% block page_title %}Permintaan Masuk{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Permintaan masuk</h2>
+<div class="page">
+  <p class="page-subtitle">Tinjau akses yang diminta dan pilih data yang ingin kamu bagikan.</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Peminta</th>
-        <th>Pesan</th>
-        <th>Status</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for r in reqs %}
-      <tr>
-        <td>{{ r.requester.username }}</td>
-        <td>{{ r.message|default:"-" }}</td>
-        <td>{{ r.get_status_display }}</td>
-        <td>
-          {% if r.status == "pending" %}
-            <a href="{% url 'sharing_approve' r.id %}">Setujui</a>
-            <form method="post" action="{% url 'sharing_reject' r.id %}" style="display:inline">
-              {% csrf_token %}
-              <button type="submit">Tolak</button>
-            </form>
-          {% elif r.status == "approved" %}
-            <a href="{% url 'sharing_token' r.id %}">Lihat kode</a>
-            <form method="post" action="{% url 'sharing_revoke' r.id %}" style="display:inline"
-                  onsubmit="return confirm('Cabut akses dan hapus salinan data?');">
-              {% csrf_token %}
-              <button type="submit">Cabut</button>
-            </form>
-          {% else %}
-            -
-          {% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4">Belum ada permintaan masuk.</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</section>
+  <div class="card card-flush">
+    {% if reqs %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Peminta</th>
+            <th scope="col">Pesan</th>
+            <th scope="col">Status</th>
+            <th scope="col">Diterima</th>
+            <th scope="col"><span class="visually-hidden">Aksi</span></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in reqs %}
+          <tr>
+            <td><strong>{{ r.requester.username }}</strong></td>
+            <td>{{ r.message|default:"—" }}</td>
+            <td>
+              {% if r.status == "pending" %}
+                <span class="badge badge-pending">Menunggu keputusan</span>
+              {% elif r.status == "approved" %}
+                <span class="badge badge-approved">Disetujui</span>
+              {% elif r.status == "rejected" %}
+                <span class="badge badge-rejected">Ditolak</span>
+              {% else %}
+                <span class="badge badge-neutral">Dicabut</span>
+              {% endif %}
+            </td>
+            <td>{{ r.created|date:"d M Y, H:i" }}</td>
+            <td class="table-actions">
+              {% if r.status == "pending" %}
+                <a class="btn btn-primary btn-sm" href="{% url 'sharing_approve' r.pk %}">Tinjau</a>
+                <form method="post" action="{% url 'sharing_reject' r.pk %}">
+                  {% csrf_token %}
+                  <button class="btn btn-secondary btn-sm" type="submit">Tolak</button>
+                </form>
+              {% elif r.status == "approved" %}
+                <a class="btn btn-secondary btn-sm" href="{% url 'sharing_token' r.pk %}">Lihat kode</a>
+                <form method="post" action="{% url 'sharing_revoke' r.pk %}"
+                      onsubmit="return confirm('Cabut akses dan hapus salinan data yang dibagikan?');">
+                  {% csrf_token %}
+                  <button class="btn btn-danger btn-sm" type="submit">Cabut akses</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-title">Belum ada permintaan masuk</div>
+        <p>Permintaan akses dari pengguna lain akan muncul di sini.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

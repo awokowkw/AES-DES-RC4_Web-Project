@@ -1,4 +1,5 @@
 {% load static %}<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -7,6 +8,7 @@
     <title>{% block title %}SYNK{% endblock %}</title>
     <script src="{% static 'js/theme.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
 <body class="app-body {% block body_class %}{% endblock %}">
@@ -114,11 +116,11 @@
 
             <main class="main-content" id="main-content" tabindex="-1">
                 {% if messages %}
-                <ul class="django-messages" style="list-style:none;margin:0 0 1rem;padding:0;">
-                    {% for m in messages %}
-                    <li style="padding:.75rem 1rem;margin-bottom:.5rem;border-radius:8px;background:#eef2ff;">{{ m }}</li>
-                    {% endfor %}
-                </ul>
+                    <div class="page" style="padding-bottom:0">
+                        {% for m in messages %}
+                        <div class="alert alert-{{ m.level_tag }}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">{{ m }}</div>
+                        {% endfor %}
+                    </div>
                 {% endif %}
                 {% block content %}{% endblock %}
             </main>

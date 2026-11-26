@@ -1,40 +1,55 @@
 {% extends "base.html" %}
-{% block title %}Data Diterima · SYNK{% endblock %}
+{% block title %}Data dari {{ req.owner.username }} · SYNK{% endblock %}
 {% block page_title %}Data Diterima{% endblock %}
 
 {% block content %}
-<section>
-  <h2>Data yang dibagikan oleh {{ req.owner.username }}</h2>
+<div class="page">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="{% url 'sharing_sent' %}">Permintaan saya</a>
+    <span aria-hidden="true">/</span>
+    <span>Data dari {{ req.owner.username }}</span>
+  </nav>
+  <p class="page-subtitle">
+    Berikut item yang dibagikan oleh <strong>{{ req.owner.username }}</strong>.
+    Pilih algoritma yang tersedia untuk membuka tiap item.
+  </p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Nama / label</th>
-        <th>Jenis</th>
-        <th>Ukuran</th>
-        <th>Buka dengan</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for i in items %}
-      <tr>
-        <td>{{ i.label }}</td>
-        <td>{{ i.kind }}</td>
-        <td>{{ i.size|filesizeformat }}</td>
-        <td>
-          <a href="{% url 'sharing_read' i.id 'aes' %}">AES</a> |
-          <a href="{% url 'sharing_read' i.id 'rc4' %}">RC4</a> |
-          <a href="{% url 'sharing_read' i.id 'des' %}">DES</a>
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4">Pemilik belum membagikan data apa pun.</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-
-  <p><a href="{% url 'sharing_sent' %}">Kembali ke permintaan saya</a></p>
-</section>
+  <div class="card card-flush">
+    {% if items %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Nama item</th>
+            <th scope="col">Jenis</th>
+            <th scope="col">Ukuran</th>
+            <th scope="col">Buka dengan</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td><strong>{{ item.label }}</strong></td>
+            <td><span class="badge badge-neutral">{{ item.kind }}</span></td>
+            <td>{{ item.size|filesizeformat }}</td>
+            <td>
+              <div class="action-group">
+                <a class="btn btn-secondary btn-sm" href="{% url 'sharing_read' item.id 'aes' %}">AES</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'sharing_read' item.id 'rc4' %}">RC4</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'sharing_read' item.id 'des' %}">DES</a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-title">Belum ada item yang dibagikan</div>
+        <p>Pemilik belum membagikan data atau file pada permintaan ini.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
