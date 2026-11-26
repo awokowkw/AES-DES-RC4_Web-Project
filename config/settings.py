@@ -171,6 +171,26 @@ CACHES = {
     }
 }
 
-# --- Penyimpanan file terenkripsi ---
+# --- Penyimpanan file terenkripsi (Supabase S3 Storage dengan fallback lokal) ---
 MEDIA_ROOT = BASE_DIR / 'media'
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024   # >2 MB ditulis ke file sementara, bukan RAM
+
+if os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_S3_ENDPOINT_URL'):
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+                "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                "bucket_name": os.getenv("AWS_STORAGE_BUCKET_NAME"),
+                "endpoint_url": os.getenv("AWS_S3_ENDPOINT_URL"),
+                "region_name": os.getenv("AWS_S3_REGION_NAME", "ap-southeast-1"),
+                "file_overwrite": False,
+                "default_acl": None,
+                "querystring_auth": True,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
