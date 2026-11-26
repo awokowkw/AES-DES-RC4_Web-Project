@@ -25,4 +25,5 @@ urlpatterns = [
     path('drive/file/<int:pk>/rename/', views.file_rename, name='file_rename'),
     path('drive/folder/<int:pk>/rename/', views.folder_rename, name='folder_rename'),
     path('drive/folder/<int:pk>/download/', views.folder_download, name='folder_download'),
+    path('drive/file/<int:pk>/preview/', views.file_preview, name='file_preview'),
 ]
