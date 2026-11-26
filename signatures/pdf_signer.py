@@ -54,8 +54,18 @@ def sign_uploaded_pdf_if_needed(user, passphrase: bytes, uploaded_file):
     if not uploaded_file.name.lower().endswith('.pdf'):
         return uploaded_file
 
-    key_obj = ensure_user_signing_key(user, passphrase)
     raw_pdf = uploaded_file.read()
+    try:
+        reader = PdfFileReader(io.BytesIO(raw_pdf), strict=False)
+        if reader.embedded_signatures:
+            uploaded_file.seek(0)
+            return uploaded_file
+    except Exception:
+        # Jika gagal membaca struktur PDF untuk cek signature, lanjutkan ke alur signing
+        # atau biarkan error ditangani di bawah.
+        pass
+
+    key_obj = ensure_user_signing_key(user, passphrase)
     signed_pdf = embed_signature_to_pdf_bytes(
         raw_pdf,
         key_obj.encrypted_private_key_pem,
