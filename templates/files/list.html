@@ -115,7 +115,7 @@
                     </thead>
                     <tbody id="file-table-body">
                         {% for file in files %}
-                        <tr class="file-row" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}">
+                        <tr class="file-row" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}" data-file-type="{{ file.type }}" data-file-size-label="{{ file.size }}" data-file-modified-label="{{ file.modified }}">
                             <td>
                                 <div class="file-name-cell">
                                     <span class="file-type-icon file-type-{{ file.kind }}" aria-hidden="true"><span>{{ file.extension|slice:":3" }}</span></span>
@@ -138,7 +138,7 @@
 
             <div class="file-grid" id="file-grid" hidden>
                 {% for file in files %}
-                <article class="file-grid-card" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}">
+                <article class="file-grid-card" data-file-name="{{ file.name|lower }}" data-file-kind="{{ file.kind }}" data-file-location="{{ file.location }}" data-file-size="{{ file.size_sort }}" data-file-modified="{{ file.modified_sort }}" data-file-created="{{ file.created }}" data-download-url="{{ file.download_url }}" data-delete-url="{{ file.delete_url }}" data-rename-url="{{ file.rename_url }}" data-file-type="{{ file.type }}" data-file-size-label="{{ file.size }}" data-file-modified-label="{{ file.modified }}">
                     <div class="file-grid-card-top">
                         <span class="file-type-icon file-type-{{ file.kind }}" aria-hidden="true"><span>{{ file.extension|slice:":3" }}</span></span>
                         <button class="context-trigger" type="button" data-context-type="file" data-context-name="{{ file.name }}" aria-label="More options for {{ file.name }}" aria-haspopup="menu" aria-expanded="false">

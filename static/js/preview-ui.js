@@ -39,14 +39,41 @@
     if (el) el.textContent = value;
   }
 
+  function setText(id, value) {
+    const el = $(id);
+    if (el) el.textContent = value;
+  }
+
   function fillDetails(item, name, downloadUrl) {
     const d = item.dataset;
+    let type = d.fileType;
+    let size = d.fileSizeLabel;
+    let modified = d.fileModifiedLabel;
+
+    if (item.matches('tr')) {
+      const c = item.cells;
+      type     = type     || (c[1] && c[1].textContent.trim());
+      size     = size     || (c[2] && c[2].textContent.trim());
+      modified = modified || (c[3] && c[3].textContent.trim());
+    } else {
+      const meta = item.querySelector('.file-grid-meta');
+      if (meta) {
+        const parts = meta.textContent.split('·').map(s => s.trim());
+        size     = size     || parts[0];
+        modified = modified || parts[1];
+      }
+    }
+    if (!type) {
+      const ext = extOf(name);
+      type = ext ? ext.toUpperCase() + ' file' : '—';
+    }
+
     setText('pv-name', name);
-    setText('pv-type', d.fileType || '—');
-    setText('pv-size', d.fileSizeLabel || '—');
+    setText('pv-type', type || '—');
+    setText('pv-size', size || '—');
     setText('pv-created', d.fileCreated || '—');
-    setText('pv-modified', d.fileModifiedLabel || '—');
-    setText('pv-location', d.fileLocation || '—');
+    setText('pv-modified', modified || '—');
+    setText('pv-location', d.fileLocation && d.fileLocation !== '—' ? d.fileLocation : 'My Files');
     const dl = $('pv-download');
     if (dl) dl.href = downloadUrl;
   }
