@@ -3621,3 +3621,73 @@ a:focus-visible,
     text-align: center;
     vertical-align: middle;
 }
+
+/* Recent activity: nama file dipotong dengan ellipsis */
+.activity-card .activity-row {
+    display: flex;
+    min-width: 0;
+}
+
+.activity-card .activity-copy {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.activity-card .activity-copy p {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.activity-card .activity-copy p strong {
+    flex: 0 0 auto;
+}
+
+.activity-card .activity-file {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Recent activity: nama file dipotong dengan ellipsis */
+.activity-card .activity-row {
+    display: flex;
+    min-width: 0;
+}
+
+.activity-card .activity-copy {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.activity-card .activity-copy p {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.activity-card .activity-copy p strong {
+    flex: 0 0 auto;
+}
+
+.activity-card .activity-file {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -112,9 +112,12 @@
                         {% if item.kind == 'upload' %}↑{% elif item.kind == 'edit' %}✎{% elif item.kind == 'folder' %}▱{% else %}◌{% endif %}
                     </span>
                     <div class="activity-copy">
-                        <p><strong>{{ item.action }}</strong> {{ item.file }}</p>
-                        <time>{{ item.time }}</time>
-                    </div>
+                    <p>
+                        <strong>{{ item.action }}</strong>
+                        <span class="activity-file" title="{{ item.file }}">{{ item.file }}</span>
+                    </p>
+                    <time>{{ item.time }}</time>
+                </div>
                 </li>
                 {% empty %}
                 <li class="dashboard-empty-state activity-empty-state">
