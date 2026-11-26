@@ -1,27 +1,19 @@
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET, require_POST
 
+from accounts import keystore
 from accounts.decorators import vault_unlocked
 from vault.models import StoredFile
 from vault.services import open_stored_file, overwrite_encrypted_bytes, stored_filename
-from .cert_utils import ensure_user_signing_key
-from .models import UserSigningKey
+from .cert_utils import ensure_root_ca, ensure_user_signing_key
+from .models import RootCA, UserSigningKey
 from .pdf_signer import embed_signature_to_pdf_bytes, verify_pdf_signature
 
 
-@vault_unlocked
-from accounts import keystore
-
-from .cert_utils import ensure_root_ca, ensure_user_signing_key
-from .models import RootCA, UserSigningKey
-from .pdf_signer import verify_pdf_signature
-
-
 def _get_passphrase(request) -> bytes:
-    """Ambil data_key asli (sama yang dipakai saat upload). Endpoint signature
-    tidak memakai @vault_unlocked, jadi data_key diambil dari keystore cache.
-    Fallback lama hanya dipakai bila kunci benar-benar tidak tersedia."""
+    """Ambil data_key asli (sama yang dipakai saat upload)."""
     dk = getattr(request, 'data_key', None)
     if isinstance(dk, bytes):
         return dk
@@ -29,6 +21,16 @@ def _get_passphrase(request) -> bytes:
     if isinstance(dk, bytes):
         return dk
     return f"synk-key-{request.user.id}".encode('utf-8')
+
+
+def _get_trust_certs() -> list[str]:
+    """Ambil Root CA sebagai trust root beserta sertifikat user untuk kompatibilitas."""
+    trust_certs = []
+    root = RootCA.objects.first()
+    if root:
+        trust_certs.append(root.certificate_pem)
+    trust_certs += list(UserSigningKey.objects.values_list('certificate_pem', flat=True))
+    return trust_certs
 
 
 @login_required
@@ -61,15 +63,14 @@ def generate_key_endpoint(request):
 @vault_unlocked
 @require_POST
 def regenerate_key_endpoint(request):
-    """Hapus key lama (self-signed) & buat ulang cert yang ditandatangani Root CA.
-    Diperlukan agar PDF lama yang ditandatangani cert self-signed jadi terverifikasi."""
+    """Hapus key lama (self-signed) & buat ulang cert yang ditandatangani Root CA."""
     UserSigningKey.objects.filter(user=request.user).delete()
-    key_obj = ensure_user_signing_key(request.user, _get_passphrase(request))
+    key_obj = ensure_user_signing_key(request.user, request.data_key)
     return JsonResponse({
         'has_key': True,
         'created_at': key_obj.created_at.strftime('%d %b %Y, %H:%M'),
         'public_key_preview': key_obj.public_key_pem.splitlines()[1][:36] + '...',
-        'message': 'Key pair & sertifikat baru (ditandatangani Root CA SYNK) berhasil dibuat! Unggah ulang PDF untuk menandatangani ulang.',
+        'message': 'Key pair & sertifikat baru (ditandatangani Root CA SYNK) berhasil dibuat!',
     })
 
 
@@ -82,29 +83,21 @@ def verify_pdf_endpoint(request):
         return JsonResponse({'signed': False, 'valid': False, 'message': 'Harap pilih file berformat .pdf.'}, status=400)
 
     pdf_bytes = pdf_file.read()
-    # Root CA sebagai trust root (cert user ditandatangani root). Sertifikat
-    # user lama (self-signed) tetap dimasukkan agar kompatibel ke belakang.
-    trust_certs = []
-    root = RootCA.objects.first()
-    if root:
-        trust_certs.append(root.certificate_pem)
-    trust_certs += list(UserSigningKey.objects.values_list('certificate_pem', flat=True))
-    result = verify_pdf_signature(pdf_bytes, trust_certs)
+    result = verify_pdf_signature(pdf_bytes, _get_trust_certs())
     return JsonResponse(result)
 
 
 @vault_unlocked
 @require_GET
 def download_root_ca(request):
-    """Unduh Root CA SYNK (.crt). Install SEKALI ke Trusted Root (Edge/Adobe)
-    agar SEMUA tanda tangan user otomatis terverifikasi."""
+    """Unduh Root CA SYNK (.crt) untuk di-install ke Trusted Root (Edge/Adobe)."""
     root = ensure_root_ca()
     resp = HttpResponse(root.certificate_pem, content_type='application/x-x509-ca-cert')
     resp['Content-Disposition'] = 'attachment; filename="SYNK_Root_CA.crt"'
     return resp
 
 
-@login_required
+@vault_unlocked
 @require_GET
 def download_my_certificate(request):
     """Unduh sertifikat X.509 (.crt) untuk di-import ke Adobe Acrobat Reader."""
@@ -128,8 +121,7 @@ def pdf_signature_status_endpoint(request, file_id):
     with open_stored_file(sf, data_key, algo='aes') as f:
         pdf_bytes = f.read()
 
-    all_certs = list(UserSigningKey.objects.values_list('certificate_pem', flat=True))
-    result = verify_pdf_signature(pdf_bytes, all_certs)
+    result = verify_pdf_signature(pdf_bytes, _get_trust_certs())
 
     return JsonResponse({
         'is_pdf': True,
@@ -153,11 +145,9 @@ def sign_pdf_file_endpoint(request, file_id):
 
     key_obj = ensure_user_signing_key(request.user, data_key)
 
-    # 1. Baca PDF asli terdekripsi dari Supabase S3
     with open_stored_file(sf, data_key, algo='aes') as f:
         raw_pdf = f.read()
 
-    # 2. Tanamkan signature PAdES ke dalam bytes PDF
     signed_pdf = embed_signature_to_pdf_bytes(
         pdf_bytes=raw_pdf,
         priv_pem=key_obj.private_key_pem,
@@ -165,7 +155,6 @@ def sign_pdf_file_endpoint(request, file_id):
         passphrase=data_key,
     )
 
-    # 3. Enkripsi ulang (AES/RC4/DES) dan simpan kembali ke Supabase S3
     overwrite_encrypted_bytes(request.user, data_key, sf, signed_pdf)
 
     return JsonResponse({'ok': True, 'message': 'PDF berhasil ditandatangani secara digital!'})
