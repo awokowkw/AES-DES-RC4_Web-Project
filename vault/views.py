@@ -1,6 +1,8 @@
 import mimetypes
 import os
+import re
 
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.contrib import messages
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -169,6 +171,78 @@ def file_download(request, pk):
     stem = os.path.splitext(name)[0].replace('/', '_').replace('\\', '_')
     resp = FileResponse(tmp, as_attachment=True, filename=f'{stem}_AES-RC4-DES.zip',
                         content_type='application/zip')
+    resp['X-Content-Type-Options'] = 'nosniff'
+    resp['Cache-Control'] = 'private, no-store'
+    return resp
+
+# Hanya tipe aman yang boleh di-preview (SVG/HTML sengaja tidak disertakan: bisa jalankan script)
+PREVIEW_TYPES = {
+    'pdf': 'application/pdf',
+    'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+    'gif': 'image/gif', 'webp': 'image/webp',
+    'mp4': 'video/mp4', 'webm': 'video/webm',
+    'txt': 'text/plain; charset=utf-8', 'csv': 'text/plain; charset=utf-8',
+}
+
+
+def _ranged(chunks, start, end):
+    """Ambil byte [start, end] dari iterator chunk hasil dekripsi."""
+    pos = 0
+    for chunk in chunks:
+        nxt = pos + len(chunk)
+        if nxt > start and pos <= end:
+            yield chunk[max(start - pos, 0): end - pos + 1]
+        pos = nxt
+        if pos > end:
+            break
+
+
+@vault_unlocked
+@xframe_options_sameorigin          # wajib agar PDF bisa tampil di <iframe>
+def file_preview(request, pk):
+    stored = get_object_or_404(StoredFile, pk=pk, owner=request.user)
+    key = request.data_key
+
+    try:
+        name = services.stored_filename(stored, key)
+    except (crypto.IntegrityError, OSError):
+        return HttpResponse('Data gagal lolos verifikasi integritas.', status=500)
+
+    ext = os.path.splitext(name)[1].lstrip('.').lower()
+    ctype = PREVIEW_TYPES.get(ext)
+    if ctype is None:
+        return HttpResponse('Preview tidak tersedia untuk tipe file ini.', status=415)
+
+    # Range (untuk video agar bisa digeser). Verifikasi integritas cukup di permintaan awal.
+    total = stored.size
+    start, end, partial = 0, total - 1, False
+    m = re.match(r'bytes=(\d*)-(\d*)$', request.headers.get('Range', ''))
+    if m and (m.group(1) or m.group(2)):
+        if m.group(1):
+            start = int(m.group(1))
+            end = int(m.group(2)) if m.group(2) else total - 1
+        else:                                   # "bytes=-N" = N byte terakhir
+            start = max(total - int(m.group(2)), 0)
+        end = min(end, total - 1)
+        if start > end:
+            return HttpResponse(status=416)
+        partial = True
+
+    if not partial or start == 0:
+        try:
+            services.verify_stored_file(stored, key, ['aes'])
+        except (crypto.IntegrityError, OSError):
+            return HttpResponse('Data gagal lolos verifikasi integritas.', status=500)
+
+    chunks = services.open_stored_file(stored, key, 'aes')
+    resp = StreamingHttpResponse(
+        _ranged(chunks, start, end) if partial else chunks,
+        content_type=ctype, status=206 if partial else 200)
+    resp['Content-Length'] = end - start + 1
+    resp['Accept-Ranges'] = 'bytes'
+    if partial:
+        resp['Content-Range'] = f'bytes {start}-{end}/{total}'
+    resp['Content-Disposition'] = content_disposition_header(False, name)  # False = inline
     resp['X-Content-Type-Options'] = 'nosniff'
     resp['Cache-Control'] = 'private, no-store'
     return resp

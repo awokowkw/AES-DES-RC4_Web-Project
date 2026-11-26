@@ -254,6 +254,40 @@
     </form>
 </dialog>
 
+<dialog class="preview-dialog" id="file-preview-dialog" aria-label="File preview">
+    <header class="preview-topbar">
+        <button type="button" class="preview-btn" id="preview-close" aria-label="Close preview">✕</button>
+        <span class="preview-title" id="preview-title"></span>
+        <a class="preview-btn" id="preview-download" title="Download" aria-label="Download">⬇</a>
+        <button type="button" class="preview-btn" id="preview-info" title="Show/hide details"
+                aria-label="Show or hide details" aria-pressed="true">ⓘ</button>
+    </header>
+
+    <div class="preview-body">
+        <div class="preview-stage" id="preview-stage"></div>
+
+        <aside class="preview-panel" id="preview-panel" aria-label="File details">
+            <p class="card-eyebrow">FILE DETAILS</p>
+            <h2 id="pv-name"></h2>
+            <div class="protected-file-badge"><span aria-hidden="true">✓</span> Protected file</div>
+
+            <dl class="preview-details">
+                <div><dt>Type</dt><dd id="pv-type">—</dd></div>
+                <div><dt>Size</dt><dd id="pv-size">—</dd></div>
+                <div><dt>Created</dt><dd id="pv-created">—</dd></div>
+                <div><dt>Modified</dt><dd id="pv-modified">—</dd></div>
+                <div><dt>Location</dt><dd id="pv-location">—</dd></div>
+                <div><dt>Status</dt><dd>Protected file</dd></div>
+            </dl>
+
+            <div class="preview-panel-actions">
+                <a class="primary-button" id="pv-download">Download</a>
+                <button class="secondary-button" id="pv-manage" type="button">Rename / Delete</button>
+            </div>
+        </aside>
+    </div>
+</dialog>
+
 <div class="context-menu" id="file-context-menu" role="menu" aria-label="File actions" hidden>
     <button type="button" role="menuitem" data-context-action="open">Open</button>
     <button type="button" role="menuitem" data-context-action="download">Download</button>
@@ -267,4 +301,5 @@
 {% block extra_scripts %}
 <script src="{% static 'js/files-ui.js' %}" defer></script>
 <script src="{% static 'js/upload-ui.js' %}" defer></script>
+<script src="{% static 'js/preview-ui.js' %}" defer></script>
 {% endblock %}
