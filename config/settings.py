@@ -175,6 +175,9 @@ CACHES = {
 MEDIA_ROOT = BASE_DIR / 'media'
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024   # >2 MB ditulis ke file sementara, bukan RAM
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
+
 if os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_S3_ENDPOINT_URL'):
     STORAGES = {
         "default": {

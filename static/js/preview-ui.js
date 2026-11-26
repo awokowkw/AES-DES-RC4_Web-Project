@@ -275,6 +275,90 @@
     applyScale();
   }
 
+  // ---------- Digital Signature (khusus PDF) ----------
+  function getCsrfToken() {
+    const input = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (input && input.value) return input.value;
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  function extractFileId(downloadUrl) {
+    const m = downloadUrl.match(/\/(\d+)\/download\/?$/);
+    return m ? m[1] : null;
+  }
+
+  async function loadSignatureStatus(fileId) {
+    const statusEl = $('pv-sig-status');
+    const signBtn  = $('pv-sign-btn');
+    const metaEl   = $('pv-sig-meta');
+    if (!statusEl || !fileId) return;
+
+    statusEl.textContent = 'Memeriksa tanda tangan...';
+    if (metaEl) metaEl.textContent = '';
+
+    try {
+      const res = await fetch(`/signatures/api/file/${fileId}/status/`, { credentials: 'same-origin' });
+      const data = await res.json();
+
+      if (data.is_signed) {
+        statusEl.innerHTML = `<span style="color:#16a34a;font-weight:600;">✓ Sudah Ditandatangani</span>`;
+        if (metaEl) {
+          metaEl.textContent = `${data.signer || 'SYNK Owner'}${data.signed_at ? ' · ' + data.signed_at : ''}`;
+        }
+        if (signBtn) signBtn.textContent = 'Sign Ulang PDF';
+      } else {
+        statusEl.innerHTML = `<span style="color:#64748b;">Belum ditandatangani</span>`;
+        if (signBtn) signBtn.textContent = 'Sign PDF';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Gagal memuat status signature';
+    }
+  }
+
+  async function triggerSignPdf() {
+    if (!currentItem) return;
+    const fileId = extractFileId(currentItem.dataset.downloadUrl);
+    if (!fileId) return;
+
+    const signBtn  = $('pv-sign-btn');
+    const statusEl = $('pv-sig-status');
+    if (signBtn) signBtn.disabled = true;
+    if (statusEl) statusEl.textContent = 'Menandatangani PDF...';
+
+    try {
+      const res = await fetch(`/signatures/api/file/${fileId}/sign/`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // --- MULAI PENGGANTI const data = await res.json(); ---
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('Server non-JSON response:', res.status, text);
+        throw new Error(`Server error (${res.status}) — cek terminal runserver`);
+      }
+      // --- AKHIR PENGGANTI ---
+
+      if (!res.ok) throw new Error(data.error || 'Gagal menandatangani PDF');
+      await loadSignatureStatus(fileId);
+    } catch (err) {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;">✕ ${err.message}</span>`;
+    } finally {
+      if (signBtn) signBtn.disabled = false;
+    }
+  }
+
+  const pvSignBtn = $('pv-sign-btn');
+  if (pvSignBtn) pvSignBtn.addEventListener('click', triggerSignPdf);
+
   // ---------- buka preview ----------
   function openPreview(item) {
     const opener = item.querySelector('.file-open-button');
@@ -291,7 +375,16 @@
     setPanel(window.innerWidth >= 900);
     if (!dialog.open) dialog.showModal();
 
-    if (ext === 'pdf') { showPdf(previewUrl, downloadUrl, name, session); return; }
+    const sigBox = $('pv-signature-box');
+    if (ext === 'pdf') {
+      if (sigBox) sigBox.hidden = false;
+      const fileId = extractFileId(downloadUrl);
+      if (fileId) loadSignatureStatus(fileId);
+      showPdf(previewUrl, downloadUrl, name, session);
+      return;
+    } else {
+      if (sigBox) sigBox.hidden = true;
+    }
 
     let node;
     if (IMG.includes(ext)) {

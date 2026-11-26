@@ -120,7 +120,18 @@ def store_upload(user, data_key, uploaded, kind, folder=None):
             default_storage.delete(p)
         raise
 
-
+def overwrite_encrypted_bytes(user, data_key, sf, raw_bytes):
+    """Mengenkripsi ulang bytes baru (PDF bertanda tangan) ke AES/RC4/DES di S3."""
+    timings = {}
+    chunks = [raw_bytes[i:i + crypto.CHUNK] for i in range(0, len(raw_bytes), crypto.CHUNK)]
+    with ExitStack() as stack:
+        outs = {a: stack.enter_context(default_storage.open(getattr(sf, f'path_{a}'), 'wb'))
+                for a in ('aes', 'rc4', 'des')}
+        size = crypto.encrypt_stream(data_key, chunks, outs, timings)
+    sf.size = size
+    sf.save(update_fields=['size'])
+    log_crypto(user, 'sign_pdf', timings, size, file_id=sf.pk)
+    
 def get_owned_file(user, pk):
     """Hanya file milik user. File orang lain -> StoredFile.DoesNotExist (jadikan 404)."""
     return StoredFile.objects.get(pk=pk, owner=user)
