@@ -1,9 +1,10 @@
-import mimetypes, shutil
+import mimetypes
 from uuid import uuid4
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,7 +14,7 @@ from vault import crypto
 from vault.models import PrivateData, StoredFile
 from . import keys
 from .models import AccessRequest, SharedItem, SharedKey, UserKeyPair
-from .services import abs_path, ensure_keypair, get_data_key
+from .services import ensure_keypair, get_data_key
 
 S = AccessRequest.Status
 User = get_user_model()
@@ -107,10 +108,9 @@ def approve(request, pk):
                     shared_key=sk, kind=f.kind, size=f.size,
                     **_triple("label", crypto.seal(K, name)))
                 rel = {a: f"shared/{sk.id}/{item.id}.{a}" for a in TRIPLE}
-                abs_path(rel["aes"]).parent.mkdir(parents=True, exist_ok=True)
-                outs = {a: open(abs_path(rel[a]), "wb") for a in TRIPLE}
+                outs = {a: default_storage.open(rel[a], "wb") for a in TRIPLE}
                 try:
-                    with open(abs_path(f.path_aes), "rb") as src:   # SESUAIKAN path_aes -> path file
+                    with default_storage.open(f.path_aes, "rb") as src:
                         crypto.encrypt_stream(K, crypto.decrypt_stream(odk, "aes", src), outs, timings)
                 finally:
                     for o in outs.values():
@@ -122,7 +122,11 @@ def approve(request, pk):
             req.save()
     except Exception:
         if sk is not None:
-            shutil.rmtree(abs_path(f"shared/{sk.id}"), ignore_errors=True)   # bersihkan file yatim
+            # Clean up orphaned shared files from storage
+            for si in SharedItem.objects.filter(shared_key=sk):
+                for p in [si.path_aes, si.path_rc4, si.path_des]:
+                    if p:
+                        default_storage.delete(p)
         raise
     return render(request, "sharing/approved.html", {"req": req, "token": token})
 
@@ -147,7 +151,11 @@ def revoke(request, pk):
     if request.method == "POST":
         req = get_object_or_404(AccessRequest, pk=pk, owner=request.user, status=S.APPROVED)
         sk = req.sharedkey
-        shutil.rmtree(abs_path(f"shared/{sk.id}"), ignore_errors=True)
+        # Delete all shared ciphertext files from storage (local or S3)
+        for si in sk.items.all():
+            for p in [si.path_aes, si.path_rc4, si.path_des]:
+                if p:
+                    default_storage.delete(p)
         sk.delete()                          # SharedItem ikut terhapus (cascade)
         req.status, req.decided_at = S.REVOKED, timezone.now()
         req.save()
@@ -191,9 +199,9 @@ def _open_share_key(request, sk):
                        aad=f"share-req:{sk.request_id}".encode())
 
 
-def _plain_stream(K, algo, path):
-    """Buka file, verifikasi MAC DULU (error muncul sebelum response dibuat), lalu alirkan."""
-    f = open(path, "rb")
+def _plain_stream(K, algo, storage_path):
+    """Buka file dari default_storage, verifikasi MAC DULU, lalu alirkan."""
+    f = default_storage.open(storage_path, "rb")
     try:
         gen = crypto.decrypt_stream(K, algo, f)
         first = next(gen, b"")
@@ -248,7 +256,7 @@ def read_item(request, item_pk, algo):
 
         name = crypto.open_one(K, "aes", item.label_aes).decode()
         mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
-        stream = _plain_stream(K, algo, abs_path(getattr(item, f"path_{algo}")))
+        stream = _plain_stream(K, algo, getattr(item, f"path_{algo}"))
     except crypto.IntegrityError as e:
         messages.error(request, f"Data gagal diverifikasi: {e}")
         return redirect("sharing_received", pk=req.id)
